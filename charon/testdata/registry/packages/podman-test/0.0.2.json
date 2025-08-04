@@ -1,0 +1,10 @@
+{
+  "title": {
+    "name": "podman-test",
+    "version": "0.0.2"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "container": "docker://debian"
+  }
+}

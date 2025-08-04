@@ -1,0 +1,38 @@
+{
+  "title": {
+    "name": "with-prompts",
+    "version": "0.0.1"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "container": "docker://debian"
+  },
+  "storage": {
+    "volumes": [
+      {
+        "name": "private",
+        "mountpoint": "@private_path@",
+        "size": "@private_size@",
+        "recreate": "@private_recreate@",
+        "private": "true"
+      }
+    ]
+  },
+  "prompts": [
+    {
+      "template": "private_path",
+      "question": "Where do you want this mounted?",
+      "input_type": "string"
+    },
+    {
+      "template": "private_size",
+      "question": "How big should it be?",
+      "input_type": "integer"
+    },
+    {
+      "template": "private_recreate",
+      "question": "Should we recreate this volume if it already exists?",
+      "input_type": "boolean"
+    }
+  ]
+}

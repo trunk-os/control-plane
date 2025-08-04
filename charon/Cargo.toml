@@ -1,0 +1,36 @@
+[package]
+name = "charon"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+buckle = { version = "*", path = "../buckle", features = [ "zfs" ] }
+serde = { version = "*", features = [ "derive" ] }
+serde_json = "*"
+serde_yaml_ng = "*"
+anyhow = "*"
+clap = { version = "*", features = [ "derive" ] }
+curl = "*"
+url = "*"
+zbus_systemd = { version = "*", features = [ "systemd1" ] }
+tokio = { version = "*", features = [ "full" ] }
+tonic = "^0.13"
+prost = "^0.13"
+tracing = { version = "*", features = [ "log" ] }
+tracing-subscriber = "*"
+tokio-stream = "*"
+tonic-middleware = "*"
+http = "*"
+fancy-duration = "*"
+
+[dev-dependencies]
+tempfile = "*"
+lazy_static = "*"
+libc = "*"
+reqwest = "*"
+
+[build-dependencies]
+tonic-build = "^0.13"
+
+[features]
+livetests = [ ]

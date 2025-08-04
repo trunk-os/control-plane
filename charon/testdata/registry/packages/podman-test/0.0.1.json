@@ -1,0 +1,34 @@
+{
+  "title": {
+    "name": "podman-test",
+    "version": "0.0.1"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "container": "docker://debian"
+  },
+  "storage": {
+    "volumes": [
+      {
+        "name": "private",
+        "mountpoint": "/private-test",
+        "size": "1234567890",
+        "recreate": "false",
+        "private": "true"
+      },
+      {
+        "name": "shared",
+        "mountpoint": "/shared-test",
+        "size": "1234567890",
+        "recreate": "false",
+        "private": "false"
+      }
+    ]
+  },
+  "system": {
+    "host_pid": "true",
+    "host_net": "true",
+    "privileged": "true",
+    "capabilities": ["SYS_ADMIN"]
+  }
+}

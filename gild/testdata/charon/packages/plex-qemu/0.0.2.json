@@ -1,0 +1,24 @@
+{
+  "title": {
+    "name": "plex-qemu",
+    "version": "0.0.2"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "url": "file://./testdata/ubuntu.img"
+  },
+  "storage": {
+    "volumes": [
+      {
+        "name": "test",
+        "size": "1234",
+        "private": "false",
+        "recreate": "false"
+      }
+    ]
+  },
+  "resources": {
+    "cpus": "4",
+    "memory": "8192"
+  }
+}

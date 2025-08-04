@@ -1,0 +1,18 @@
+{
+  "title": {
+    "name": "plex-qemu",
+    "version": "0.0.1"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "url": "file://./testdata/ubuntu.img"
+  },
+  "networking": {
+    "forward_ports": [["1234", "5678"]],
+    "expose_ports": [["2345", "6789"]]
+  },
+  "resources": {
+    "cpus": "8",
+    "memory": "4096"
+  }
+}

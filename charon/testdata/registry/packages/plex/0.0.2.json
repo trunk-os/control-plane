@@ -1,0 +1,10 @@
+{
+  "title": {
+    "name": "plex",
+    "version": "0.0.2"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "container": "scratch"
+  }
+}

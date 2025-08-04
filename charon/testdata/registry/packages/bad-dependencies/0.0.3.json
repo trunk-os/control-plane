@@ -1,0 +1,11 @@
+{
+  "title": {
+    "name": "bad-dependencies",
+    "version": "0.0.3"
+  },
+  "description": "Please modify this description",
+  "dependencies": [{ "name": "bad-name-version", "version": "0.0.1" }],
+  "source": {
+    "container": "scratch"
+  }
+}

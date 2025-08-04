@@ -1,0 +1,10 @@
+{
+  "title": {
+    "name": "bad-name-version",
+    "version": "0.0.1"
+  },
+  "description": "Please modify this description",
+  "source": {
+    "container": "scratch"
+  }
+}

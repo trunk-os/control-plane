@@ -1,0 +1,13 @@
+# path to registry tree
+registry:
+  path: testdata/registry
+  # URL to a remote repository to pull for new informatino, or null to ignore this behavior.
+  url: null
+# path to charond socket
+socket: /tmp/charond.sock
+# optional: do not perform write operations or other dangerous things, just log them
+debug: true
+# optional: the path to install systemd services to
+systemd_root: /etc/systemd/system
+# optional: log level (fatal, warn, info, error, debug etc)
+log_level: info

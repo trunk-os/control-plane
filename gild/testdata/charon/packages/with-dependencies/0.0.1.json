@@ -1,0 +1,11 @@
+{
+  "title": {
+    "name": "with-dependencies",
+    "version": "0.0.1"
+  },
+  "description": "Please modify this description",
+  "dependencies": [{ "name": "plex", "version": "0.0.2" }],
+  "source": {
+    "container": "scratch"
+  }
+}

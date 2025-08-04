@@ -1,0 +1,173 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+package buckle;
+
+message PingResult {
+  SystemInfo info = 1;
+}
+
+message SystemInfo {
+           uint64 uptime           = 1;
+           uint64 available_memory = 2;
+           uint64 total_memory     = 3;
+           uint64 cpus             = 4;
+           float  cpu_usage        = 5;
+           string host_name        = 6;
+           string kernel_version   = 7;
+  repeated double load_average     = 8;
+           uint64 processes        = 9;
+           uint64 total_disk       = 10;
+           uint64 available_disk   = 11;
+}
+
+service Status {
+  rpc Ping (google.protobuf.Empty) returns (PingResult);
+}
+
+message ZFSList {
+  repeated ZFSEntry entries = 1;
+}
+
+message ZFSName {
+  string name = 1;
+}
+
+message ZFSListFilter {
+  optional string filter = 1;
+}
+
+enum ZFSType {
+  Dataset = 0;
+  Volume  = 1;
+}
+
+message ZFSModifyDataset {
+  string     name          = 1;
+  ZFSDataset modifications = 2;
+}
+
+message ZFSModifyVolume {
+  string    name          = 1;
+  ZFSVolume modifications = 2;
+}
+
+message ZFSEntry {
+           ZFSType kind      = 1;
+           string  name      = 2;
+           string  full_name = 3;
+           uint64  size      = 4;
+           uint64  used      = 5;
+           uint64  avail     = 6;
+           uint64  refer     = 7;
+  optional string  mountpoint = 8;
+}
+
+message ZFSDataset {
+           string name  = 1;
+  optional uint64 quota = 2;
+}
+
+message ZFSVolume {
+  string name = 1;
+  uint64 size = 2;
+}
+
+service ZFS {
+  rpc List(ZFSListFilter)             returns (ZFSList);
+  rpc CreateDataset(ZFSDataset)       returns (google.protobuf.Empty);
+  rpc CreateVolume(ZFSVolume)         returns (google.protobuf.Empty);
+  rpc ModifyDataset(ZFSModifyDataset) returns (google.protobuf.Empty);
+  rpc ModifyVolume(ZFSModifyVolume)   returns (google.protobuf.Empty);
+  rpc Destroy(ZFSName)                returns (google.protobuf.Empty);
+}
+
+enum UnitLoadState {
+  Loaded   = 0;
+  Unloaded = 1;
+  Inactive = 2;
+}
+
+enum UnitRuntimeState {
+  Started   = 0;
+  Stopped   = 1;
+  Restarted = 2;
+  Reloaded  = 3;
+}
+
+enum UnitEnabledState {
+  Enabled       = 0;
+  Disabled      = 1;
+  EnabledFailed = 2;
+}
+
+enum UnitLastRunState {
+  RunFailed = 0;
+  Dead      = 1;
+  Mounted   = 2;
+  Running   = 3;
+  Listening = 4;
+  Plugged   = 5;
+  Exited    = 6;
+  Active    = 7;
+  Waiting   = 8;
+}
+
+message GRPCUnitStatus {
+  UnitRuntimeState runtime_state  = 1;
+  UnitLastRunState last_run_state = 2;
+  UnitLoadState    load_state     = 3;
+}
+
+message GRPCUnit {
+  string            name          = 1;
+  string            description   = 2;
+  UnitEnabledState  enabled_state = 3;
+  string            object_path   = 4;
+  GRPCUnitStatus    status        = 5;
+}
+
+message GRPCUnitSettings {
+  string           name          = 1;
+  UnitRuntimeState runtime_state = 2;
+  UnitEnabledState enabled_state = 3;
+}
+
+message GRPCUnitList {
+  repeated GRPCUnit items = 1;
+}
+
+message UnitListFilter {
+  string filter = 1;
+}
+
+message GRPCLogParams {
+  string           name      = 1;
+  uint64           count     = 2;
+  string           cursor    = 3;
+  GRPCLogDirection direction = 4;
+}
+
+enum GRPCLogDirection {
+  Forward  = 0;
+  Backward = 1;
+}
+
+message GRPCLogMessage {
+  google.protobuf.Timestamp time         = 1;
+  string                    service_name = 2;
+  string                    msg          = 3;
+  uint64                    pid          = 4;
+  string                    cursor       = 5;
+}
+
+message GRPCUnitName {
+  string name = 1;
+}
+
+service Systemd {
+  rpc SetUnit(GRPCUnitSettings)     returns (google.protobuf.Empty);
+  rpc List(UnitListFilter)          returns (GRPCUnitList);
+  rpc UnitLog(GRPCLogParams)        returns (stream GRPCLogMessage);
+  rpc Reload(google.protobuf.Empty) returns (google.protobuf.Empty);
+}

@@ -1,0 +1,6 @@
+listen: "0.0.0.0:5300"
+sockets:
+  buckle: "/tmp/buckled.sock"
+  charon: "/tmp/charond.sock"
+db: "./gild.db"
+log_level: info

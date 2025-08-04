@@ -1,0 +1,45 @@
+[package]
+name = "gild"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+buckle = { version = "*", path = "../buckle", features = [ "zfs" ] }
+charon = { version = "*", path = "../charon", features = [ "livetests" ] }
+axum = { version = "*", features = [ "tokio", "http1", "http2", "macros" ] }
+axum-server = "*"
+axum-serde = { version = "*", features = [ "cbor" ] }
+serde = { version = "*", features = [ "derive" ] }
+serde_yaml_ng = "*"
+serde_json = "*"
+anyhow = "*"
+http = "*"
+tokio = { version = "*", features = [ "full" ] }
+ciborium = "*"
+tower = "*"
+tonic = "*"
+tower-http = { version = "*", features = [ "cors", "trace" ] }
+sqlx = { version = "*", features = [ "runtime-tokio", "sqlite", "uuid", "derive", "macros", "chrono" ] }
+welds = { version = "*", features = [ "sqlite", "check", "detect", "migrations", "unstable-api", "tracing" ] }
+argon2 = "*"
+uuid = "*"
+chrono = { version = "*", features = [ "serde" ] }
+rand_core = { version = "*", features = [ "getrandom" ] }
+rand = "*"
+validator = { version = "*", features = [ "derive" ] }
+hmac = "*"
+sha2 = "*"
+jwt = "*"
+problem_details = { version = "*", features = [ "serde", "json", "axum" ] }
+tracing = "*"
+tracing-subscriber = "*"
+futures-util = "*"
+tokio-stream = "*"
+
+[dev-dependencies]
+reqwest = { version = "*", features = [ "default", "cookies" ] }
+reqwest_cookie_store = "*"
+tempfile = "*"
+
+[features]
+zfs = []

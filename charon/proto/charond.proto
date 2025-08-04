@@ -1,0 +1,104 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+package charond;
+
+service Status {
+  rpc Ping (google.protobuf.Empty) returns (google.protobuf.Empty);
+}
+
+message ProtoPackageTitleWithRoot {
+  string name        = 1;
+  string version     = 2;
+  string volume_root = 3;
+}
+
+service Control {
+  rpc Install(ProtoPackageTitle)           returns (google.protobuf.Empty);
+  rpc Uninstall(ProtoPackageTitle)         returns (google.protobuf.Empty);
+  rpc Installed(ProtoPackageTitle)         returns (ProtoPackageInstalled);
+  rpc WriteUnit(ProtoPackageTitleWithRoot) returns (google.protobuf.Empty);
+  rpc RemoveUnit(ProtoPackageTitle)        returns (google.protobuf.Empty);
+}
+
+message ProtoPackageTitle {
+  string name        = 1;
+  string version     = 2;
+}
+
+message ProtoPrompts {
+  repeated ProtoPrompt prompts = 1;
+}
+
+message ProtoPrompt {
+  string    template   = 1;
+  string    question   = 2;
+  ProtoType input_type = 3;
+}
+
+enum ProtoType {
+  Integer       = 0;
+  SignedInteger = 1;
+  String        = 2;
+  Boolean       = 3;
+}
+
+message ProtoPromptResponse {
+  string    template = 1;
+  string    response = 2;
+  ProtoType input_type = 3;
+}
+
+message ProtoPromptResponses {
+           string              name      = 1;
+  repeated ProtoPromptResponse responses = 2;
+}
+
+message ProtoPackageTitleList {
+  repeated ProtoPackageTitle list = 1;
+}
+
+enum ProtoLoadState {
+  Loaded   = 0;
+  Unloaded = 1;
+  Inactive = 2;
+}
+
+enum ProtoRuntimeState {
+  Restarted = 0;
+  Started   = 1;
+  Stopped   = 2;
+  Reloaded  = 3;
+}
+
+enum ProtoLastRunState {
+  Listening = 0;
+  Dead      = 1;
+  Exited    = 2;
+  Active    = 3;
+  Mounted   = 4;
+  Running   = 5;
+  Plugged   = 6;
+  Waiting   = 7;
+  Failed    = 8;
+}
+
+message ProtoStatus {
+  ProtoRuntimeState runtime_state  = 1;
+  ProtoLastRunState last_run_state = 2;
+  ProtoLoadState    load_state     = 3;
+}
+
+message ProtoPackageInstalled {
+  oneof proto_install_state {
+    ProtoStatus           installed     = 1;
+    google.protobuf.Empty not_installed = 2;
+  }
+}
+
+service Query {
+  rpc GetPrompts(ProtoPackageTitle)        returns (ProtoPrompts);
+  rpc GetResponses(ProtoPackageTitle)      returns (ProtoPromptResponses);
+  rpc SetResponses(ProtoPromptResponses)   returns (google.protobuf.Empty);
+  rpc ListInstalled(google.protobuf.Empty) returns (ProtoPackageTitleList);
+  rpc List(google.protobuf.Empty)          returns (ProtoPackageTitleList);
+}
