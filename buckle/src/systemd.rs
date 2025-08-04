@@ -79,9 +79,9 @@ impl std::str::FromStr for LastRunState {
             "listening" => Self::Listening,
             "plugged" => Self::Plugged,
             "exited" => Self::Exited,
-            "active" => Self::Active,
+            "active" | "auto-restart" | "auto-restart-queued" => Self::Active,
             "waiting" => Self::Waiting,
-            s => return Err(anyhow!("invalid state '{}'", s)),
+            s => return Err(anyhow!("invalid last run state '{}'", s)),
         })
     }
 }
@@ -112,10 +112,10 @@ impl std::str::FromStr for LoadState {
 
     fn from_str(s: &str) -> Result<Self> {
         Ok(match s {
-            "loaded" => Self::Loaded,
+            "loaded" | "auto-restart" | "auto-restart-queued" => Self::Loaded,
             "not-found" => Self::Unloaded,
             "inactive" => Self::Inactive,
-            s => return Err(anyhow!("invalid state '{}'", s)),
+            s => return Err(anyhow!("invalid load state '{}'", s)),
         })
     }
 }
@@ -154,7 +154,7 @@ impl std::str::FromStr for RuntimeState {
             | "maintenance" => Self::Stopped,
             "restarted" => Self::Restarted,
             "reloaded" => Self::Reloaded,
-            s => return Err(anyhow!("invalid state '{}'", s)),
+            s => return Err(anyhow!("invalid runtime state '{}'", s)),
         })
     }
 }
@@ -188,7 +188,7 @@ impl std::str::FromStr for EnabledState {
             "enabled" | "active" => Self::Enabled,
             "disabled" | "inactive" => Self::Disabled,
             "failed" => Self::Failed,
-            s => return Err(anyhow!("invalid state '{}'", s)),
+            s => return Err(anyhow!("invalid enabled state '{}'", s)),
         })
     }
 }
