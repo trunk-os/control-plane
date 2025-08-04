@@ -272,7 +272,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "zfs")]
     mod status {
         use crate::testutil::{get_status_client, make_server};
 
@@ -300,7 +299,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "zfs")]
     mod zfs {
         use crate::{
             grpc::{

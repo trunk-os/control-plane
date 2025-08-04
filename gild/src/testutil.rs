@@ -90,6 +90,7 @@ pub async fn start_charon(registry: PathBuf) -> Result<PathBuf> {
             log_level: None,
             debug: Some(true),
             systemd_root: None,
+            charon_path: None,
         })
         .start()
         .unwrap()

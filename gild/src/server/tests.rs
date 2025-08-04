@@ -253,7 +253,6 @@ mod packages {
     }
 
     #[tokio::test]
-    #[cfg(feature = "zfs")]
     async fn install() {
         let mut client = TestClient::new(start_server(None).await.unwrap());
 
@@ -775,7 +774,6 @@ mod user {
     }
 }
 
-#[cfg(feature = "zfs")]
 mod zfs {
     use std::collections::HashMap;
 

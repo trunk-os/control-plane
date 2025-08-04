@@ -46,18 +46,14 @@ pub async fn get_systemd_client(socket: std::path::PathBuf) -> Result<SystemdCli
     Ok(SystemdClient::connect(format!("unix://{}", socket.to_str().unwrap())).await?)
 }
 
-#[cfg(feature = "zfs")]
 use crate::grpc::zfs_client::ZfsClient;
-#[cfg(feature = "zfs")]
 pub async fn get_zfs_client(socket: std::path::PathBuf) -> Result<ZfsClient<Channel>> {
     Ok(ZfsClient::connect(format!("unix://{}", socket.to_str().unwrap())).await?)
 }
 
 // FIXME these commands should accept Option<&str>, setting the name to "default" when None. This
 // would match the default zpool configuration setup for the server.
-#[cfg(feature = "zfs")]
 use anyhow::anyhow;
-#[cfg(feature = "zfs")]
 pub fn create_zpool(name: &str) -> Result<String> {
     std::fs::create_dir_all("tmp")?;
 
@@ -87,7 +83,6 @@ pub fn create_zpool(name: &str) -> Result<String> {
     Ok(path.to_string_lossy().to_string())
 }
 
-#[cfg(feature = "zfs")]
 pub fn destroy_zpool(name: &str, file: Option<&str>) -> Result<()> {
     let name = format!("{}-{}", BUCKLE_TEST_ZPOOL_PREFIX, name);
     if !std::process::Command::new("zpool")
@@ -107,7 +102,6 @@ pub fn destroy_zpool(name: &str, file: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-#[cfg(feature = "zfs")]
 pub fn list_zpools() -> Result<Vec<String>> {
     let out = std::process::Command::new("zpool")
         .args(vec!["list"])
@@ -138,8 +132,8 @@ pub fn list_zpools() -> Result<Vec<String>> {
 }
 
 mod tests {
-    #[cfg(feature = "zfs")]
     mod zfs {
+        #[allow(unused)]
         use super::super::{create_zpool, destroy_zpool, list_zpools, BUCKLE_TEST_ZPOOL_PREFIX};
 
         #[test]

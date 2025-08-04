@@ -633,7 +633,6 @@ impl Controller {
 }
 
 #[cfg(test)]
-#[cfg(feature = "zfs")]
 mod tests {
     mod controller {
         use super::super::Pool;

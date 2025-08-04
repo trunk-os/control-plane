@@ -10,7 +10,6 @@ fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackag
     registry.load(name, version)?.compile()
 }
 
-#[cfg(feature = "livetests")]
 mod livetests {
     use super::*;
     use std::{

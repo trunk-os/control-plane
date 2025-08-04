@@ -48,7 +48,6 @@ async fn test_ping() {
     client.status().await.unwrap().ping().await.unwrap();
 }
 
-#[cfg(feature = "livetests")]
 #[tokio::test]
 async fn test_write_unit_real() {
     // real mode. validate written. this test also reloads systemd (which doesn't pick up anything
@@ -105,7 +104,6 @@ Alias=podman-test-0.0.2.service
 }
 
 #[tokio::test]
-#[cfg(feature = "livetests")]
 async fn test_write_unit() {
     // debug mode
     let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
@@ -232,7 +230,6 @@ async fn list() {
 }
 
 #[tokio::test]
-#[cfg(feature = "livetests")]
 async fn installer() {
     use crate::{InstallStatus, PackageTitle};
 

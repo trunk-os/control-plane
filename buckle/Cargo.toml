@@ -16,20 +16,12 @@ serde = { version = "*", features = [ "derive" ] }
 serde_yaml_ng = "*"
 serde_json = "*"
 tokio-stream = "*"
-tempfile = { version = "*", optional = true }
 sysinfo = { version = "*", features = [ "default", "linux-netdevs", "linux-tmpfs" ] }
 tracing = { version = "*", features = [ "log" ] }
 tracing-subscriber = "*"
 zbus_systemd = { version = "*", features = [ "systemd1" ] }
 systemd = "*"
+tempfile = "*"
 
 [build-dependencies]
 tonic-build = "^0.13"
-
-[dev-dependencies]
-tempfile = "*"
-
-# these are currently only used for testing
-[features]
-zfs = [] 
-test = [ "tempfile" ]

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-buckle = { version = "*", path = "../buckle", features = [ "zfs" ] }
+buckle = { version = "*", path = "../buckle" }
 serde = { version = "*", features = [ "derive" ] }
 serde_json = "*"
 serde_yaml_ng = "*"
@@ -22,15 +22,10 @@ tokio-stream = "*"
 tonic-middleware = "*"
 http = "*"
 fancy-duration = "*"
-
-[dev-dependencies]
-tempfile = "*"
 lazy_static = "*"
 libc = "*"
 reqwest = "*"
+tempfile = "*"
 
 [build-dependencies]
 tonic-build = "^0.13"
-
-[features]
-livetests = [ ]
