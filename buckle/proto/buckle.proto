@@ -161,10 +161,6 @@ message GRPCLogMessage {
   string                    cursor       = 5;
 }
 
-message GRPCUnitName {
-  string name = 1;
-}
-
 service Systemd {
   rpc SetUnit(GRPCUnitSettings)     returns (google.protobuf.Empty);
   rpc List(UnitListFilter)          returns (GRPCUnitList);

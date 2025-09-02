@@ -5,10 +5,10 @@ edition = "2024"
 
 [dependencies]
 tokio = { version = "*", features = [ "full" ] }
-tonic = "^0.13"
+tonic = "*"
 tonic-middleware = "*"
-prost = "^0.13"
-prost-types = "^0.13"
+prost = "*"
+prost-types = "*"
 clap = { version = "*", features = [ "derive" ] }
 anyhow = "*"
 fancy-duration = "*"
@@ -22,6 +22,7 @@ tracing-subscriber = "*"
 zbus_systemd = { version = "*", features = [ "systemd1" ] }
 systemd = "*"
 tempfile = "*"
+tonic-prost = "*"
 
 [build-dependencies]
-tonic-build = "^0.13"
+tonic-prost-build = "*"

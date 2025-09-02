@@ -14,8 +14,8 @@ curl = "*"
 url = "*"
 zbus_systemd = { version = "*", features = [ "systemd1" ] }
 tokio = { version = "*", features = [ "full" ] }
-tonic = "^0.13"
-prost = "^0.13"
+tonic = "*"
+prost = "*"
 tracing = { version = "*", features = [ "log" ] }
 tracing-subscriber = "*"
 tokio-stream = "*"
@@ -26,6 +26,7 @@ lazy_static = "*"
 libc = "*"
 reqwest = "*"
 tempfile = "*"
+tonic-prost = "*"
 
 [build-dependencies]
-tonic-build = "^0.13"
+tonic-prost-build = "*"
