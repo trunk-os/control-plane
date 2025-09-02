@@ -13,6 +13,7 @@ Description=Charon launcher for @PACKAGE_NAME@, version @PACKAGE_VERSION@
 ExecStart=@CHARON_PATH@ -r @REGISTRY_PATH@ launch @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
 ExecStop=@CHARON_PATH@ -r @REGISTRY_PATH@ stop @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
 Restart=always
+TimeoutSec=300
 
 [Install]
 Alias=@PACKAGE_FILENAME@.service
@@ -207,6 +208,7 @@ Description=Charon launcher for podman-test, version 0.0.2
 ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 {}
 ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 {}
 Restart=always
+TimeoutSec=300
 
 [Install]
 Alias=podman-test-0.0.2.service

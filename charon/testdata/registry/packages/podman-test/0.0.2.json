@@ -5,6 +5,6 @@
   },
   "description": "Please modify this description",
   "source": {
-    "container": "docker://debian"
+    "container": "docker://nginx"
   }
 }

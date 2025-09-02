@@ -85,6 +85,7 @@ Description=Charon launcher for podman-test, version 0.0.2
 ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /tmp/volroot
 ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /tmp/volroot
 Restart=always
+TimeoutSec=300
 
 [Install]
 Alias=podman-test-0.0.2.service
