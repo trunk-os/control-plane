@@ -83,6 +83,7 @@ pub struct Config {
     pub debug: Option<bool>,
     #[serde(default = "default_charon_path")]
     pub charon_path: Option<PathBuf>,
+    pub buckle_socket: PathBuf,
 }
 
 impl Config {

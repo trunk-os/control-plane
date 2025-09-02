@@ -1,10 +1,13 @@
 use crate::{
-    proto_package_installed::ProtoInstallState, Global, GlobalRegistry, PromptCollection,
+    proto_package_installed::ProtoInstallState, Config, Global, GlobalRegistry, PromptCollection,
     PromptResponses, ProtoLastRunState, ProtoLoadState, ProtoRuntimeState, ProtoStatus,
     ResponseRegistry, SystemdUnit, TemplatedInput,
 };
 use anyhow::{anyhow, Result};
-use buckle::systemd::{LastRunState, LoadState, RuntimeState};
+use buckle::{
+    client::{Dataset, Volume},
+    systemd::{LastRunState, LoadState, RuntimeState},
+};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -118,10 +121,39 @@ impl SourcePackage {
         self.response_registry()?.get(&self.title.name)
     }
 
-    pub fn compile(&self) -> Result<CompiledPackage> {
+    pub async fn compile(&self, config: &Config) -> Result<CompiledPackage> {
         let globals = self.globals()?;
         let prompts = self.prompts.clone().unwrap_or_default();
         let responses = self.responses().unwrap_or_default();
+
+        let storage = self
+            .storage
+            .clone()
+            .unwrap_or_default()
+            .compile(&globals, &prompts, &responses)?;
+
+        for volume in &storage.volumes {
+            let client = buckle::client::Client::new(config.buckle_socket.clone())?;
+            if let Some(mountpoint) = volume.mountpoint {
+                client
+                    .zfs()
+                    .await?
+                    .create_dataset(Dataset {
+                        name: volume.name.clone(),
+                        quota: Some(volume.size),
+                    })
+                    .await?;
+            } else {
+                client
+                    .zfs()
+                    .await?
+                    .create_volume(Volume {
+                        name: volume.name.clone(),
+                        size: volume.size,
+                    })
+                    .await?;
+            }
+        }
 
         Ok(CompiledPackage {
             root: self.root.clone().unwrap_or_default(),
@@ -134,11 +166,7 @@ impl SourcePackage {
                 .clone()
                 .unwrap_or_default()
                 .compile(&globals, &prompts, &responses)?,
-            storage: self
-                .storage
-                .clone()
-                .unwrap_or_default()
-                .compile(&globals, &prompts, &responses)?,
+            storage,
             system: self
                 .system
                 .clone()

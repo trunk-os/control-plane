@@ -71,7 +71,8 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile()
+            .compile(&self.config)
+            .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
         Ok(tonic::Response::new(ProtoPackageInstalled {
@@ -94,7 +95,8 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile()
+            .compile(&self.config)
+            .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
         pkg.install()
@@ -122,7 +124,8 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile()
+            .compile(&self.config)
+            .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
         pkg.uninstall()
@@ -146,7 +149,8 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile()
+            .compile(&self.config)
+            .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
         let unit = SystemdUnit::new(
@@ -173,7 +177,8 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile()
+            .compile(&self.config)
+            .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
         let unit = SystemdUnit::new(

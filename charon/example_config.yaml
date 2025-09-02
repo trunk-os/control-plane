@@ -5,6 +5,7 @@ registry:
   url: null
 # path to charond socket
 socket: /tmp/charond.sock
+buckle_socket: /tmp/buckle.sock
 # optional: do not perform write operations or other dangerous things, just log them
 debug: true
 # optional: the path to install systemd services to
