@@ -6,11 +6,13 @@ fn string_vec(v: Vec<&str>) -> Vec<String> {
     v.iter().map(ToString::to_string).collect::<Vec<String>>()
 }
 
-async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
-    registry
-        .load(name, version)?
-        .compile(&"/tmp/buckled.sock".into())
-        .await
+async fn load(
+    registry: &Registry,
+    name: &str,
+    version: &str,
+    socket: &PathBuf,
+) -> Result<CompiledPackage> {
+    registry.load(name, version)?.compile(socket).await
 }
 
 mod livetests {
@@ -47,12 +49,28 @@ mod livetests {
 
     #[tokio::test]
     async fn launch_podman() {
+        let pool = buckle::testutil::create_zpool("launch-podman").unwrap();
+
+        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
+
+        buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: socket.clone(),
+            zfs: buckle::config::ZFSConfig { pool },
+            log_level: buckle::config::LogLevel::Debug,
+        }))
+        .await
+        .unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
         let registry = Registry::new("testdata/registry".into());
         let td = TempDir::new().unwrap();
         let path = td.path();
 
         let args = generate_command(
-            load(&registry, "podman-test", "0.0.2").await.unwrap(),
+            load(&registry, "podman-test", "0.0.2", &socket)
+                .await
+                .unwrap(),
             path.to_path_buf(),
         )
         .unwrap();
@@ -67,7 +85,9 @@ mod livetests {
         let status = child.wait().unwrap();
         assert!(status.signal().unwrap() as i32 == libc::SIGINT);
 
-        let pkg = load(&registry, "podman-test", "0.0.3").await.unwrap();
+        let pkg = load(&registry, "podman-test", "0.0.3", &socket)
+            .await
+            .unwrap();
         let args = generate_command(pkg.clone(), path.to_path_buf()).unwrap();
 
         let _ = stop_package(pkg.clone(), path.to_path_buf());
@@ -102,7 +122,10 @@ mod livetests {
 
         stop_package(pkg, path.to_path_buf()).unwrap();
         let status = child.wait().unwrap();
-        assert!(status.success())
+        assert!(status.success());
+
+        std::fs::remove_file(socket).unwrap();
+        buckle::testutil::destroy_zpool("launch-podman", None).unwrap();
     }
 
     //
@@ -110,7 +133,7 @@ mod livetests {
     // fn launch_qemu() {
     //     let registry = Registry::new("testdata/registry".into());
     //     let args = generate_command(
-    //         load(&registry, "plex-qemu", "0.0.2").await.unwrap(),
+    //         load(&registry, "plex-qemu", "0.0.2", &socket).await.unwrap(),
     //         "testdata/volume-root".into(),
     //     )
     //     .unwrap();
@@ -125,10 +148,26 @@ mod cli_generation {
 
     #[tokio::test]
     async fn qemu_cli() {
+        let pool = buckle::testutil::create_zpool("qemu-cli").unwrap();
+
+        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
+
+        buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: socket.clone(),
+            zfs: buckle::config::ZFSConfig { pool },
+            log_level: buckle::config::LogLevel::Debug,
+        }))
+        .await
+        .unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
         let registry = Registry::new("testdata/registry".into());
         assert_eq!(
             generate_command(
-                load(&registry, "plex-qemu", "0.0.2").await.unwrap(),
+                load(&registry, "plex-qemu", "0.0.2", &socket)
+                    .await
+                    .unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -160,7 +199,9 @@ mod cli_generation {
 
         assert_eq!(
             generate_command(
-                load(&registry, "plex-qemu", "0.0.1").await.unwrap(),
+                load(&registry, "plex-qemu", "0.0.1", &socket)
+                    .await
+                    .unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -187,14 +228,30 @@ mod cli_generation {
                 "driver=raw,if=virtio,file=/volume-root/image,cache=none,media=disk,index=0"
             ]),
         );
+
+        std::fs::remove_file(socket).unwrap();
+        buckle::testutil::destroy_zpool("qemu-cli", None).unwrap();
     }
 
     #[tokio::test]
     async fn podman_cli() {
+        let pool = buckle::testutil::create_zpool("podman-cli").unwrap();
+        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
+
+        buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: socket.clone(),
+            zfs: buckle::config::ZFSConfig { pool },
+            log_level: buckle::config::LogLevel::Debug,
+        }))
+        .await
+        .unwrap();
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
         let registry = Registry::new("testdata/registry".into());
         assert_eq!(
             generate_command(
-                load(&registry, "plex", "0.0.2").await.unwrap(),
+                load(&registry, "plex", "0.0.2", &socket).await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -209,7 +266,7 @@ mod cli_generation {
         );
         assert_eq!(
             generate_command(
-                load(&registry, "plex", "0.0.1").await.unwrap(),
+                load(&registry, "plex", "0.0.1", &socket).await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -224,7 +281,9 @@ mod cli_generation {
         );
         assert_eq!(
             generate_command(
-                load(&registry, "podman-test", "0.0.1").await.unwrap(),
+                load(&registry, "podman-test", "0.0.1", &socket)
+                    .await
+                    .unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -248,5 +307,8 @@ mod cli_generation {
                 "docker://debian"
             ])
         );
+
+        std::fs::remove_file(socket).unwrap();
+        buckle::testutil::destroy_zpool("podman-cli", None).unwrap();
     }
 }

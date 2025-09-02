@@ -132,8 +132,9 @@ impl SourcePackage {
             .unwrap_or_default()
             .compile(&globals, &prompts, &responses)?;
 
+        let client = buckle::client::Client::new(buckle_socket.clone())?;
+
         for volume in &storage.volumes {
-            let client = buckle::client::Client::new(buckle_socket.clone())?;
             if volume.mountpoint.is_some() {
                 client
                     .zfs()
