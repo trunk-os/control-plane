@@ -166,7 +166,7 @@ mod tests {
     async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
         registry
             .load(name, version)?
-            .compile(&"/tmp/buckle.sock".into())
+            .compile(&"/tmp/buckled.sock".into())
             .await
     }
 

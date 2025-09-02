@@ -930,7 +930,7 @@ mod tests {
         }
 
         let pkg = pr.load("plex", "1.2.3").unwrap();
-        let out = pkg.compile(&"/tmp/buckle.sock".into()).await.unwrap();
+        let out = pkg.compile(&"/tmp/buckled.sock".into()).await.unwrap();
 
         assert_eq!(
             out,
