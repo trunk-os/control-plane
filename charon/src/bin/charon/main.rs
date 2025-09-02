@@ -142,8 +142,8 @@ async fn main() -> Result<()> {
             let systemd = SystemdUnit::new(
                 r.load(&cu_args.package_name, &cu_args.package_version)?
                     .compile()?,
-                cu_args.systemd_root.unwrap(),
-                std::env::current_exe().unwrap(),
+                cu_args.systemd_root,
+                std::env::current_exe().ok(),
             );
 
             systemd

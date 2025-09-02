@@ -1,4 +1,4 @@
-use crate::CompiledPackage;
+use crate::{CompiledPackage, DEFAULT_CHARON_BIN_PATH};
 use anyhow::{anyhow, Result};
 use std::io::Write;
 use std::path::PathBuf;
@@ -21,12 +21,16 @@ Alias=@PACKAGE_FILENAME@.service
 #[derive(Debug, Clone)]
 pub struct SystemdUnit {
     package: CompiledPackage,
-    systemd_root: PathBuf,
-    charon_path: PathBuf,
+    systemd_root: Option<PathBuf>,
+    charon_path: Option<PathBuf>,
 }
 
 impl SystemdUnit {
-    pub fn new(package: CompiledPackage, systemd_root: PathBuf, charon_path: PathBuf) -> Self {
+    pub fn new(
+        package: CompiledPackage,
+        systemd_root: Option<PathBuf>,
+        charon_path: Option<PathBuf>,
+    ) -> Self {
         Self {
             package,
             systemd_root,
@@ -41,7 +45,10 @@ impl SystemdUnit {
     pub fn filename(&self) -> PathBuf {
         format!(
             "{}/{}.service",
-            self.systemd_root.display(),
+            self.systemd_root
+                .clone()
+                .unwrap_or(SYSTEMD_SERVICE_ROOT.into())
+                .display(),
             self.package.title
         )
         .into()
@@ -61,7 +68,15 @@ impl SystemdUnit {
                         "PACKAGE_FILENAME" => out.push_str(&self.package.title.to_string()),
                         "VOLUME_ROOT" => out.push_str(volume_root.to_str().unwrap_or_default()),
                         "REGISTRY_PATH" => out.push_str(registry_path.to_str().unwrap_or_default()),
-                        "CHARON_PATH" => out.push_str(self.charon_path.clone().to_str().unwrap()),
+                        "CHARON_PATH" => {
+                            out.push_str(
+                                self.charon_path
+                                    .clone()
+                                    .unwrap_or(DEFAULT_CHARON_BIN_PATH.into())
+                                    .to_str()
+                                    .unwrap(),
+                            );
+                        }
                         _ => return Err(anyhow!("invalid template variable '{}'", variable)),
                     };
                     variable = String::new();
@@ -156,8 +171,8 @@ mod tests {
         let registry = Registry::new("testdata/registry".into());
         let unit = SystemdUnit::new(
             load(&registry, "podman-test", "0.0.2").unwrap(),
-            SYSTEMD_SERVICE_ROOT.into(),
-            "/usr/bin/charon".into(),
+            Some(SYSTEMD_SERVICE_ROOT.into()),
+            Some("/usr/bin/charon".into()),
         );
         assert_eq!(
             unit.filename().as_os_str(),
@@ -175,8 +190,8 @@ mod tests {
         let pkg = load(&registry, "podman-test", "0.0.2").unwrap();
         let unit = SystemdUnit::new(
             pkg,
-            crate::SYSTEMD_SERVICE_ROOT.into(),
-            crate::DEFAULT_CHARON_BIN_PATH.into(),
+            Some(crate::SYSTEMD_SERVICE_ROOT.into()),
+            Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
         );
         let text = unit
             .unit("testdata/registry".into(), path.to_path_buf())

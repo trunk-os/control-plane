@@ -470,20 +470,18 @@ impl Systemd {
             let runtime_state: RuntimeState = item.4.parse()?;
             let last_run_state: LastRunState = item.4.parse()?;
 
-            if matches!(load_state, LoadState::Loaded) {
-                v.push(Unit {
-                    name,
-                    description,
-                    enabled_state,
-                    status: Status {
-                        load_state,
-                        runtime_state,
-                        last_run_state,
-                    },
-                    // required for all the management calls
-                    object_path: item.6.to_string(),
-                })
-            }
+            v.push(Unit {
+                name,
+                description,
+                enabled_state,
+                status: Status {
+                    load_state,
+                    runtime_state,
+                    last_run_state,
+                },
+                // required for all the management calls
+                object_path: item.6.to_string(),
+            })
         }
 
         Ok(v)
@@ -571,21 +569,18 @@ mod tests {
         let mut op = None;
         for item in list {
             // this should be running on any system that tests with zfs
-            if item.name == "zfs-import.target" {
+            if item.name == "init.scope" {
                 op = Some(item.object_path)
             }
         }
         assert!(op.is_some(), "did not find item in systemd to check");
         let op = op.unwrap();
 
-        assert_eq!(
-            systemd.get_unit("zfs-import.target".into()).await.unwrap(),
-            op
-        );
+        assert_eq!(systemd.get_unit("init.scope".into()).await.unwrap(), op);
 
         let status = systemd.status(op).await.unwrap();
         assert_eq!(status.runtime_state, RuntimeState::Started);
-        assert_eq!(status.last_run_state, LastRunState::Active);
+        assert_eq!(status.last_run_state, LastRunState::Running);
     }
 
     #[tokio::test]
@@ -594,8 +589,8 @@ mod tests {
         let list = systemd.list(None).await.unwrap();
         let mut found = false;
         for item in list {
-            if item.name == "zfs-import.target" {
-                assert_eq!(item.status.last_run_state, LastRunState::Active);
+            if item.name == "init.scope" {
+                assert_eq!(item.status.last_run_state, LastRunState::Running);
                 found = true;
             }
         }

@@ -151,8 +151,8 @@ impl Control for Server {
 
         let unit = SystemdUnit::new(
             pkg,
-            self.config.systemd_root.clone().unwrap(),
-            self.config.charon_path.clone().unwrap(),
+            self.config.systemd_root.clone(),
+            self.config.charon_path.clone(),
         );
         unit.create_unit(r.path(), title.volume_root.into())
             .await
@@ -178,8 +178,8 @@ impl Control for Server {
 
         let unit = SystemdUnit::new(
             pkg,
-            self.config.systemd_root.clone().unwrap(),
-            self.config.charon_path.clone().unwrap(),
+            self.config.systemd_root.clone(),
+            self.config.charon_path.clone(),
         );
         unit.remove_unit()
             .await
