@@ -163,15 +163,18 @@ mod tests {
     use anyhow::Result;
     use tempfile::TempDir;
 
-    fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
-        registry.load(name, version)?.compile()
+    async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
+        registry
+            .load(name, version)?
+            .compile(&"/tmp/buckle.sock".into())
+            .await
     }
 
-    #[test]
-    fn unit_names() {
+    #[tokio::test]
+    async fn unit_names() {
         let registry = Registry::new("testdata/registry".into());
         let unit = SystemdUnit::new(
-            load(&registry, "podman-test", "0.0.2").unwrap(),
+            load(&registry, "podman-test", "0.0.2").await.unwrap(),
             Some(SYSTEMD_SERVICE_ROOT.into()),
             Some("/usr/bin/charon".into()),
         );
@@ -183,12 +186,12 @@ mod tests {
         assert_eq!(unit.service_name(), "podman-test-0.0.2.service");
     }
 
-    #[test]
-    fn unit_contents() {
+    #[tokio::test]
+    async fn unit_contents() {
         let registry = Registry::new("testdata/registry".into());
         let td = TempDir::new().unwrap();
         let path = td.path();
-        let pkg = load(&registry, "podman-test", "0.0.2").unwrap();
+        let pkg = load(&registry, "podman-test", "0.0.2").await.unwrap();
         let unit = SystemdUnit::new(
             pkg,
             Some(crate::SYSTEMD_SERVICE_ROOT.into()),

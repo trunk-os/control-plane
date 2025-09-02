@@ -71,7 +71,7 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile(&self.config)
+            .compile(&self.config.buckle_socket)
             .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
@@ -95,7 +95,7 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile(&self.config)
+            .compile(&self.config.buckle_socket)
             .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
@@ -124,7 +124,7 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile(&self.config)
+            .compile(&self.config.buckle_socket)
             .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
@@ -149,7 +149,7 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile(&self.config)
+            .compile(&self.config.buckle_socket)
             .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
@@ -177,7 +177,7 @@ impl Control for Server {
         let pkg = r
             .load(&title.name, &title.version)
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
-            .compile(&self.config)
+            .compile(&self.config.buckle_socket)
             .await
             .map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 

@@ -91,6 +91,7 @@ pub async fn start_charon(registry: PathBuf) -> Result<PathBuf> {
             debug: Some(true),
             systemd_root: None,
             charon_path: None,
+            buckle_socket: "/tmp/buckle.sock".into(),
         })
         .start()
         .unwrap()

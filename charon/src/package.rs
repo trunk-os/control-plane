@@ -1,11 +1,11 @@
 use crate::{
-    proto_package_installed::ProtoInstallState, Config, Global, GlobalRegistry, PromptCollection,
+    proto_package_installed::ProtoInstallState, Global, GlobalRegistry, PromptCollection,
     PromptResponses, ProtoLastRunState, ProtoLoadState, ProtoRuntimeState, ProtoStatus,
     ResponseRegistry, SystemdUnit, TemplatedInput,
 };
 use anyhow::{anyhow, Result};
 use buckle::{
-    client::{Dataset, Volume},
+    client::{Dataset as ZfsDataset, Volume as ZfsVolume},
     systemd::{LastRunState, LoadState, RuntimeState},
 };
 use serde::{Deserialize, Serialize};
@@ -121,7 +121,7 @@ impl SourcePackage {
         self.response_registry()?.get(&self.title.name)
     }
 
-    pub async fn compile(&self, config: &Config) -> Result<CompiledPackage> {
+    pub async fn compile(&self, buckle_socket: &PathBuf) -> Result<CompiledPackage> {
         let globals = self.globals()?;
         let prompts = self.prompts.clone().unwrap_or_default();
         let responses = self.responses().unwrap_or_default();
@@ -133,12 +133,12 @@ impl SourcePackage {
             .compile(&globals, &prompts, &responses)?;
 
         for volume in &storage.volumes {
-            let client = buckle::client::Client::new(config.buckle_socket.clone())?;
-            if let Some(mountpoint) = volume.mountpoint {
+            let client = buckle::client::Client::new(buckle_socket.clone())?;
+            if volume.mountpoint.is_some() {
                 client
                     .zfs()
                     .await?
-                    .create_dataset(Dataset {
+                    .create_dataset(ZfsDataset {
                         name: volume.name.clone(),
                         quota: Some(volume.size),
                     })
@@ -147,7 +147,7 @@ impl SourcePackage {
                 client
                     .zfs()
                     .await?
-                    .create_volume(Volume {
+                    .create_volume(ZfsVolume {
                         name: volume.name.clone(),
                         size: volume.size,
                     })
@@ -892,8 +892,8 @@ mod tests {
         assert_eq!(pr.globals(&packages[0]).unwrap(), globals[0]);
     }
 
-    #[test]
-    fn compile() {
+    #[tokio::test]
+    async fn compile() {
         let dir = tempfile::tempdir().unwrap();
         let packages = &[SourcePackage {
             title: PackageTitle {
@@ -930,7 +930,7 @@ mod tests {
         }
 
         let pkg = pr.load("plex", "1.2.3").unwrap();
-        let out = pkg.compile().unwrap();
+        let out = pkg.compile(&"/tmp/buckle.sock".into()).await.unwrap();
 
         assert_eq!(
             out,

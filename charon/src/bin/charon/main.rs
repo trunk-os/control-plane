@@ -14,6 +14,10 @@ const DEFAULT_SOCKET_PATH: &str = "/tmp/charond.sock";
 struct MainArgs {
     #[arg(short = 'r', long = "registry", help = "Root path to package registry")]
     registry_path: Option<PathBuf>,
+
+    #[arg(short = 'b', long = "buckle", help = "Path to buckle socket")]
+    buckle_socket: Option<PathBuf>,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -117,46 +121,64 @@ async fn main() -> Result<()> {
             gr.remove(&rp_args.name)?;
         }
         Commands::Launch(l_args) => {
-            let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
-            let command = generate_command(
-                r.load(&l_args.package_name, &l_args.package_version)?
-                    .compile()?,
-                l_args.volume_root,
-            )?;
+            if let Some(buckle_socket) = args.buckle_socket {
+                let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
+                let command = generate_command(
+                    r.load(&l_args.package_name, &l_args.package_version)?
+                        .compile(&buckle_socket)
+                        .await?,
+                    l_args.volume_root,
+                )?;
 
-            let status = std::process::Command::new(&command[0])
-                .args(command.iter().skip(1))
-                .status()?;
-            std::process::exit(status.code().unwrap_or(1));
+                let status = std::process::Command::new(&command[0])
+                    .args(command.iter().skip(1))
+                    .status()?;
+                std::process::exit(status.code().unwrap_or(1));
+            } else {
+                eprintln!("You must provide the buckle socket (--buckle) to use this command");
+                std::process::exit(1);
+            }
         }
         Commands::Stop(s_args) => {
-            let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
-            stop_package(
-                r.load(&s_args.package_name, &s_args.package_version)?
-                    .compile()?,
-                s_args.volume_root,
-            )?;
+            if let Some(buckle_socket) = args.buckle_socket {
+                let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
+                stop_package(
+                    r.load(&s_args.package_name, &s_args.package_version)?
+                        .compile(&buckle_socket)
+                        .await?,
+                    s_args.volume_root,
+                )?;
+            } else {
+                eprintln!("You must provide the buckle socket (--buckle) to use this command");
+                std::process::exit(1);
+            }
         }
         Commands::CreateUnit(cu_args) => {
-            let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
-            let systemd = SystemdUnit::new(
-                r.load(&cu_args.package_name, &cu_args.package_version)?
-                    .compile()?,
-                cu_args.systemd_root,
-                std::env::current_exe().ok(),
-            );
+            if let Some(buckle_socket) = args.buckle_socket {
+                let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
+                let systemd = SystemdUnit::new(
+                    r.load(&cu_args.package_name, &cu_args.package_version)?
+                        .compile(&buckle_socket)
+                        .await?,
+                    cu_args.systemd_root,
+                    std::env::current_exe().ok(),
+                );
 
-            systemd
-                .create_unit(
-                    args.registry_path.unwrap_or(cwd.clone()),
-                    cu_args.volume_root,
-                )
-                .await?;
+                systemd
+                    .create_unit(
+                        args.registry_path.unwrap_or(cwd.clone()),
+                        cu_args.volume_root,
+                    )
+                    .await?;
 
-            println!(
-                "Wrote unit to '{}'. Please reload systemd to take effect.",
-                systemd.filename().display()
-            );
+                println!(
+                    "Wrote unit to '{}'. Please reload systemd to take effect.",
+                    systemd.filename().display()
+                );
+            } else {
+                eprintln!("You must provide the buckle socket (--buckle) to use this command");
+                std::process::exit(1);
+            }
         }
         Commands::Remote(r_args) => {
             let socket = r_args.socket.unwrap_or_else(|| DEFAULT_SOCKET_PATH.into());

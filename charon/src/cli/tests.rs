@@ -6,8 +6,11 @@ fn string_vec(v: Vec<&str>) -> Vec<String> {
     v.iter().map(ToString::to_string).collect::<Vec<String>>()
 }
 
-fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
-    registry.load(name, version)?.compile()
+async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
+    registry
+        .load(name, version)?
+        .compile(&"/tmp/buckle.sock".into())
+        .await
 }
 
 mod livetests {
@@ -18,8 +21,8 @@ mod livetests {
     };
     use tempfile::{NamedTempFile, TempDir};
 
-    #[test]
-    fn test_downloader() {
+    #[tokio::test]
+    async fn test_downloader() {
         let tf = NamedTempFile::new().unwrap();
         let path = tf.path();
 
@@ -49,7 +52,7 @@ mod livetests {
         let path = td.path();
 
         let args = generate_command(
-            load(&registry, "podman-test", "0.0.2").unwrap(),
+            load(&registry, "podman-test", "0.0.2").await.unwrap(),
             path.to_path_buf(),
         )
         .unwrap();
@@ -64,7 +67,7 @@ mod livetests {
         let status = child.wait().unwrap();
         assert!(status.signal().unwrap() as i32 == libc::SIGINT);
 
-        let pkg = load(&registry, "podman-test", "0.0.3").unwrap();
+        let pkg = load(&registry, "podman-test", "0.0.3").await.unwrap();
         let args = generate_command(pkg.clone(), path.to_path_buf()).unwrap();
 
         let _ = stop_package(pkg.clone(), path.to_path_buf());
@@ -107,7 +110,7 @@ mod livetests {
     // fn launch_qemu() {
     //     let registry = Registry::new("testdata/registry".into());
     //     let args = generate_command(
-    //         load(&registry, "plex-qemu", "0.0.2").unwrap(),
+    //         load(&registry, "plex-qemu", "0.0.2").await.unwrap(),
     //         "testdata/volume-root".into(),
     //     )
     //     .unwrap();
@@ -120,12 +123,12 @@ mod livetests {
 mod cli_generation {
     use super::*;
 
-    #[test]
-    fn qemu_cli() {
+    #[tokio::test]
+    async fn qemu_cli() {
         let registry = Registry::new("testdata/registry".into());
         assert_eq!(
             generate_command(
-                load(&registry, "plex-qemu", "0.0.2").unwrap(),
+                load(&registry, "plex-qemu", "0.0.2").await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -157,7 +160,7 @@ mod cli_generation {
 
         assert_eq!(
             generate_command(
-                load(&registry, "plex-qemu", "0.0.1").unwrap(),
+                load(&registry, "plex-qemu", "0.0.1").await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -186,12 +189,12 @@ mod cli_generation {
         );
     }
 
-    #[test]
-    fn podman_cli() {
+    #[tokio::test]
+    async fn podman_cli() {
         let registry = Registry::new("testdata/registry".into());
         assert_eq!(
             generate_command(
-                load(&registry, "plex", "0.0.2").unwrap(),
+                load(&registry, "plex", "0.0.2").await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -206,7 +209,7 @@ mod cli_generation {
         );
         assert_eq!(
             generate_command(
-                load(&registry, "plex", "0.0.1").unwrap(),
+                load(&registry, "plex", "0.0.1").await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),
@@ -221,7 +224,7 @@ mod cli_generation {
         );
         assert_eq!(
             generate_command(
-                load(&registry, "podman-test", "0.0.1").unwrap(),
+                load(&registry, "podman-test", "0.0.1").await.unwrap(),
                 "/volume-root".into()
             )
             .unwrap(),

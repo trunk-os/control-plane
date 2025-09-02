@@ -30,6 +30,7 @@ async fn start_server(debug: bool) -> (PathBuf, Option<PathBuf>) {
             },
             systemd_root: inner,
             charon_path: Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
+            buckle_socket: "/tmp/buckle.sock".into(),
         })
         .start()
         .unwrap()
