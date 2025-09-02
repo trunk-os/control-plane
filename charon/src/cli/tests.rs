@@ -51,10 +51,8 @@ mod livetests {
     async fn launch_podman() {
         let pool = buckle::testutil::create_zpool("launch-podman").unwrap();
 
-        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
-
-        buckle::testutil::make_server(Some(buckle::config::Config {
-            socket: socket.clone(),
+        let socket = buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: "".into(), // ovewrites socket on create, not sure why
             zfs: buckle::config::ZFSConfig { pool },
             log_level: buckle::config::LogLevel::Debug,
         }))
@@ -124,7 +122,6 @@ mod livetests {
         let status = child.wait().unwrap();
         assert!(status.success());
 
-        std::fs::remove_file(socket).unwrap();
         buckle::testutil::destroy_zpool("launch-podman", None).unwrap();
     }
 
@@ -150,10 +147,8 @@ mod cli_generation {
     async fn qemu_cli() {
         let pool = buckle::testutil::create_zpool("qemu-cli").unwrap();
 
-        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
-
-        buckle::testutil::make_server(Some(buckle::config::Config {
-            socket: socket.clone(),
+        let socket = buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: "".into(), // ovewrites socket on create, not sure why
             zfs: buckle::config::ZFSConfig { pool },
             log_level: buckle::config::LogLevel::Debug,
         }))
@@ -229,17 +224,15 @@ mod cli_generation {
             ]),
         );
 
-        std::fs::remove_file(socket).unwrap();
         buckle::testutil::destroy_zpool("qemu-cli", None).unwrap();
     }
 
     #[tokio::test]
     async fn podman_cli() {
         let pool = buckle::testutil::create_zpool("podman-cli").unwrap();
-        let (_, socket) = tempfile::NamedTempFile::new().unwrap().keep().unwrap();
 
-        buckle::testutil::make_server(Some(buckle::config::Config {
-            socket: socket.clone(),
+        let socket = buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: "".into(), // ovewrites socket on create, not sure why
             zfs: buckle::config::ZFSConfig { pool },
             log_level: buckle::config::LogLevel::Debug,
         }))
@@ -308,7 +301,6 @@ mod cli_generation {
             ])
         );
 
-        std::fs::remove_file(socket).unwrap();
         buckle::testutil::destroy_zpool("podman-cli", None).unwrap();
     }
 }
