@@ -9,42 +9,46 @@ use crate::db::DB;
 use crate::{config::Config, db::models::AuditLog};
 use anyhow::Result;
 use axum::{
-    routing::{delete, get, post, put},
-    Router,
+	Router,
+	routing::{delete, get, post, put},
 };
 use axum_support::WithLog;
 use buckle::client::Client as BuckleClient;
 use charon::Client as CharonClient;
-use http::{header::*, Method};
+use http::{Method, header::*};
 use std::sync::Arc;
 use tower::ServiceBuilder;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest};
+use tower_http::trace::{
+	DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest,
+};
 use tracing::Level;
 
 #[derive(Debug, Clone)]
 pub struct ServerState {
-    buckle: BuckleClient,
-    charon: CharonClient,
-    db: DB,
-    config: Config,
+	buckle: BuckleClient,
+	charon: CharonClient,
+	db: DB,
+	config: Config,
 }
 
 impl ServerState {
-    pub(crate) fn with_log<T>(&self, resp: axum_support::Result<T>, log: AuditLog) -> WithLog<T> {
-        WithLog(resp, log, self.clone().into())
-    }
+	pub(crate) fn with_log<T>(
+		&self, resp: axum_support::Result<T>, log: AuditLog,
+	) -> WithLog<T> {
+		WithLog(resp, log, self.clone().into())
+	}
 }
 
 #[derive(Debug, Clone)]
 pub struct Server {
-    config: Config,
-    router: Router,
+	config: Config,
+	router: Router,
 }
 
 impl Server {
-    pub async fn new(config: Config) -> Result<Self> {
-        Ok(Self {
+	pub async fn new(config: Config) -> Result<Self> {
+		Ok(Self {
             router: Router::new()
                 .route("/packages/uninstall", post(uninstall_package))
                 .route("/packages/install", post(install_package))
@@ -105,38 +109,40 @@ impl Server {
                 ),
             config: config.clone(),
         })
-    }
+	}
 
-    pub async fn start(&self) -> Result<()> {
-        let handle = axum_server::Handle::new();
-        tokio::spawn(shutdown_signal(handle.clone()));
-        Ok(axum_server::bind(self.config.listen)
-            .handle(handle)
-            .serve(self.router.clone().into_make_service())
-            .await?)
-    }
+	pub async fn start(&self) -> Result<()> {
+		let handle = axum_server::Handle::new();
+		tokio::spawn(shutdown_signal(handle.clone()));
+		Ok(axum_server::bind(self.config.listen)
+			.handle(handle)
+			.serve(self.router.clone().into_make_service())
+			.await?)
+	}
 }
 
 async fn shutdown_signal(handle: axum_server::Handle) {
-    let ctrl_c = async {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("failed to install CTRL+C signal handler");
-    };
+	let ctrl_c = async {
+		tokio::signal::ctrl_c()
+			.await
+			.expect("failed to install CTRL+C signal handler");
+	};
 
-    #[cfg(unix)]
-    let terminate = async {
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("failed to install signal handler")
-            .recv()
-            .await;
-    };
+	#[cfg(unix)]
+	let terminate = async {
+		tokio::signal::unix::signal(
+			tokio::signal::unix::SignalKind::terminate(),
+		)
+		.expect("failed to install signal handler")
+		.recv()
+		.await;
+	};
 
-    tokio::select! {
-        _ = ctrl_c => {},
-        _ = terminate => {},
-    }
+	tokio::select! {
+		_ = ctrl_c => {},
+		_ = terminate => {},
+	}
 
-    tracing::warn!("signal received, starting graceful shutdown");
-    handle.graceful_shutdown(Some(std::time::Duration::from_secs(10)));
+	tracing::warn!("signal received, starting graceful shutdown");
+	handle.graceful_shutdown(Some(std::time::Duration::from_secs(10)));
 }
