@@ -643,7 +643,7 @@ mod tests {
         #[test]
         fn test_controller_zfs_lifecycle() {
             let _ = destroy_zpool("controller-list", None);
-            let file = create_zpool("controller-list").unwrap();
+            let (_, file) = create_zpool("controller-list").unwrap();
             let pool = Pool::new(&format!("{}-controller-list", BUCKLE_TEST_ZPOOL_PREFIX));
             let list = pool.list(None).unwrap();
             assert_eq!(list.len(), 0);

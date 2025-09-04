@@ -254,7 +254,9 @@ mod packages {
 
     #[tokio::test]
     async fn install() {
-        let mut client = TestClient::new(start_server(None).await.unwrap());
+        let (pool, file) = buckle::testutil::create_zpool("gild-install").unwrap();
+
+        let mut client = TestClient::new(start_server(Some(pool)).await.unwrap());
 
         let login = User {
             username: "test-login".into(),
@@ -345,6 +347,8 @@ mod packages {
                 .unwrap(),
             vec![]
         );
+
+        let _ = buckle::testutil::destroy_zpool("gild-install", Some(&file));
     }
 }
 
@@ -787,9 +791,8 @@ mod zfs {
     #[tokio::test]
     async fn zfs_errors() {
         let _ = buckle::testutil::destroy_zpool("errors", None);
-        let zpool = buckle::testutil::create_zpool("errors").unwrap();
-        let mut client =
-            TestClient::new(start_server(Some("buckle-test-gild".into())).await.unwrap());
+        let (pool, file) = buckle::testutil::create_zpool("errors").unwrap();
+        let mut client = TestClient::new(start_server(Some(pool.clone())).await.unwrap());
 
         let login = User {
             username: "test-login".into(),
@@ -825,18 +828,17 @@ mod zfs {
 
         assert_eq!(
             map.get("detail").unwrap().to_string(),
-            "Error: cannot open 'buckle-test-gild/volume': dataset does not exist".to_string()
+            "Error: cannot open 'buckle-test-errors/volume': dataset does not exist".to_string()
         );
 
-        buckle::testutil::destroy_zpool("errors", Some(&zpool)).unwrap();
+        buckle::testutil::destroy_zpool("errors", Some(&file)).unwrap();
     }
 
     #[tokio::test]
     async fn zfs_basic() {
-        let _ = buckle::testutil::destroy_zpool("gild", None);
-        let zpool = buckle::testutil::create_zpool("gild").unwrap();
-        let mut client =
-            TestClient::new(start_server(Some("buckle-test-gild".into())).await.unwrap());
+        let _ = buckle::testutil::destroy_zpool("gild-basic", None);
+        let (pool, file) = buckle::testutil::create_zpool("gild-basic").unwrap();
+        let mut client = TestClient::new(start_server(Some(pool.clone())).await.unwrap());
 
         let login = User {
             username: "test-login".into(),
@@ -868,14 +870,14 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "").await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "dataset");
-        assert_eq!(result[0].full_name, "buckle-test-gild/dataset");
+        assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset");
         assert_ne!(result[0].size, 0);
         assert_ne!(result[0].avail, 0);
         assert_ne!(result[0].refer, 0);
         assert_ne!(result[0].used, 0);
         assert_eq!(
             result[0].mountpoint,
-            Some("/buckle-test-gild/dataset".into())
+            Some("/buckle-test-gild-basic/dataset".into())
         );
         client
             .post::<_, ()>(
@@ -892,7 +894,7 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "volume").await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "volume");
-        assert_eq!(result[0].full_name, "buckle-test-gild/volume");
+        assert_eq!(result[0].full_name, "buckle-test-gild-basic/volume");
         assert_ne!(result[0].size, 0);
         assert_ne!(result[0].avail, 0);
         assert_ne!(result[0].refer, 0);
@@ -916,7 +918,7 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "volume2").await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "volume2");
-        assert_eq!(result[0].full_name, "buckle-test-gild/volume2");
+        assert_eq!(result[0].full_name, "buckle-test-gild-basic/volume2");
         assert_ne!(result[0].size, 0);
         assert!(result[0].size < 6 * 1024 * 1024 && result[0].size > 4 * 1024 * 1024);
         assert_ne!(result[0].avail, 0);
@@ -927,14 +929,14 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "dataset").await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "dataset");
-        assert_eq!(result[0].full_name, "buckle-test-gild/dataset");
+        assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset");
         assert_ne!(result[0].size, 0);
         assert_ne!(result[0].avail, 0);
         assert_ne!(result[0].refer, 0);
         assert_ne!(result[0].used, 0);
         assert_eq!(
             result[0].mountpoint,
-            Some("/buckle-test-gild/dataset".into())
+            Some("/buckle-test-gild-basic/dataset".into())
         );
 
         client
@@ -954,14 +956,14 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "dataset2").await.unwrap();
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].name, "dataset2");
-        assert_eq!(result[0].full_name, "buckle-test-gild/dataset2");
+        assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset2");
         assert_ne!(result[0].size, 0);
         assert_ne!(result[0].avail, 0);
         assert_ne!(result[0].refer, 0);
         assert_ne!(result[0].used, 0);
         assert_eq!(
             result[0].mountpoint,
-            Some("/buckle-test-gild/dataset2".into())
+            Some("/buckle-test-gild-basic/dataset2".into())
         );
 
         client
@@ -979,6 +981,6 @@ mod zfs {
         let result: Vec<ZFSStat> = client.post("/zfs/list", "volume2").await.unwrap();
         assert_eq!(result.len(), 0);
 
-        buckle::testutil::destroy_zpool("gild", Some(&zpool)).unwrap();
+        buckle::testutil::destroy_zpool("gild-basic", Some(&file)).unwrap();
     }
 }

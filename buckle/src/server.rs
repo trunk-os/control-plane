@@ -313,7 +313,7 @@ mod tests {
         #[tokio::test]
         async fn test_zfs_operations() {
             let _ = destroy_zpool("default", None);
-            let file = create_zpool("default").unwrap();
+            let (_, file) = create_zpool("default").unwrap();
             let mut client = get_zfs_client(make_server(None).await.unwrap())
                 .await
                 .unwrap();

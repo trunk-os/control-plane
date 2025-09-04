@@ -49,7 +49,7 @@ mod livetests {
 
     #[tokio::test]
     async fn launch_podman() {
-        let pool = buckle::testutil::create_zpool("launch-podman").unwrap();
+        let (pool, file) = buckle::testutil::create_zpool("launch-podman").unwrap();
 
         let socket = buckle::testutil::make_server(Some(buckle::config::Config {
             socket: "".into(), // ovewrites socket on create, not sure why
@@ -122,7 +122,7 @@ mod livetests {
         let status = child.wait().unwrap();
         assert!(status.success());
 
-        buckle::testutil::destroy_zpool("launch-podman", None).unwrap();
+        let _ = buckle::testutil::destroy_zpool("launch-podman", Some(&file));
     }
 
     //
@@ -145,7 +145,7 @@ mod cli_generation {
 
     #[tokio::test]
     async fn qemu_cli() {
-        let pool = buckle::testutil::create_zpool("qemu-cli").unwrap();
+        let (pool, file) = buckle::testutil::create_zpool("qemu-cli").unwrap();
 
         let socket = buckle::testutil::make_server(Some(buckle::config::Config {
             socket: "".into(), // ovewrites socket on create, not sure why
@@ -224,12 +224,12 @@ mod cli_generation {
             ]),
         );
 
-        buckle::testutil::destroy_zpool("qemu-cli", None).unwrap();
+        let _ = buckle::testutil::destroy_zpool("qemu-cli", Some(&file));
     }
 
     #[tokio::test]
     async fn podman_cli() {
-        let pool = buckle::testutil::create_zpool("podman-cli").unwrap();
+        let (pool, file) = buckle::testutil::create_zpool("podman-cli").unwrap();
 
         let socket = buckle::testutil::make_server(Some(buckle::config::Config {
             socket: "".into(), // ovewrites socket on create, not sure why
@@ -301,6 +301,6 @@ mod cli_generation {
             ])
         );
 
-        buckle::testutil::destroy_zpool("podman-cli", None).unwrap();
+        let _ = buckle::testutil::destroy_zpool("podman-cli", Some(&file));
     }
 }

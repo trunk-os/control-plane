@@ -35,6 +35,18 @@ pub async fn make_config(addr: Option<SocketAddr>, poolname: Option<String>) -> 
     key.fill(&mut rand::rng());
     salt.fill(&mut rand::rng());
 
+    let buckle_config = if let Some(poolname) = poolname {
+        Some(buckle::config::Config {
+            socket: buckle::testutil::find_listener()?,
+            zfs: ZFSConfig { pool: poolname },
+            log_level: buckle::config::LogLevel::Error,
+        })
+    } else {
+        None
+    };
+
+    let socket = make_server(buckle_config.clone()).await?;
+
     Ok(Config {
         listen: if let Some(addr) = addr {
             addr
@@ -42,17 +54,8 @@ pub async fn make_config(addr: Option<SocketAddr>, poolname: Option<String>) -> 
             find_listener().await?
         },
         sockets: SocketConfig {
-            buckle: make_server(if let Some(poolname) = poolname {
-                Some(buckle::config::Config {
-                    socket: buckle::testutil::find_listener()?,
-                    zfs: ZFSConfig { pool: poolname },
-                    log_level: buckle::config::LogLevel::Error,
-                })
-            } else {
-                None
-            })
-            .await?,
-            charon: start_charon("testdata/charon".into()).await?,
+            buckle: socket.clone(),
+            charon: start_charon("testdata/charon".into(), socket).await?,
         },
 
         db: dbfile,
@@ -75,7 +78,7 @@ pub async fn start_server(poolname: Option<String>) -> Result<SocketAddr> {
     Ok(ret)
 }
 
-pub async fn start_charon(registry: PathBuf) -> Result<PathBuf> {
+pub async fn start_charon(registry: PathBuf, buckle_socket: PathBuf) -> Result<PathBuf> {
     std::fs::create_dir_all("tmp")?;
     let tf = NamedTempFile::new_in("tmp")?;
     let (_, path) = tf.keep()?;
@@ -91,7 +94,7 @@ pub async fn start_charon(registry: PathBuf) -> Result<PathBuf> {
             debug: Some(true),
             systemd_root: None,
             charon_path: None,
-            buckle_socket: "/tmp/buckled.sock".into(),
+            buckle_socket,
         })
         .start()
         .unwrap()

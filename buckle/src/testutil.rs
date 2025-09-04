@@ -54,7 +54,7 @@ pub async fn get_zfs_client(socket: std::path::PathBuf) -> Result<ZfsClient<Chan
 // FIXME these commands should accept Option<&str>, setting the name to "default" when None. This
 // would match the default zpool configuration setup for the server.
 use anyhow::anyhow;
-pub fn create_zpool(name: &str) -> Result<String> {
+pub fn create_zpool(name: &str) -> Result<(String, String)> {
     std::fs::create_dir_all("tmp")?;
 
     let (_, path) = tempfile::NamedTempFile::new_in("tmp")?.keep()?;
@@ -80,7 +80,7 @@ pub fn create_zpool(name: &str) -> Result<String> {
         return Err(anyhow!("could not create zpool '{}'", name));
     }
 
-    Ok(path.to_string_lossy().to_string())
+    Ok((name, path.to_string_lossy().to_string()))
 }
 
 pub fn destroy_zpool(name: &str, file: Option<&str>) -> Result<()> {
@@ -139,7 +139,7 @@ mod tests {
         #[test]
         fn create_remove_zpool() {
             let _ = destroy_zpool("testutil-test", None);
-            let file = create_zpool("testutil-test").unwrap();
+            let (_, file) = create_zpool("testutil-test").unwrap();
             assert!(file.len() > 0);
             assert!(list_zpools()
                 .unwrap()
