@@ -134,13 +134,22 @@ impl SourcePackage {
 
         let client = buckle::client::Client::new(buckle_socket.clone())?;
 
+        client
+            .zfs()
+            .await?
+            .create_dataset(ZfsDataset {
+                name: self.title.to_string(),
+                quota: None,
+            })
+            .await?;
+
         for volume in &storage.volumes {
             if volume.mountpoint.is_some() {
                 client
                     .zfs()
                     .await?
                     .create_dataset(ZfsDataset {
-                        name: volume.name.clone(),
+                        name: format!("{}/{}", self.title, volume.name),
                         quota: Some(volume.size),
                     })
                     .await?;
@@ -149,7 +158,7 @@ impl SourcePackage {
                     .zfs()
                     .await?
                     .create_volume(ZfsVolume {
-                        name: volume.name.clone(),
+                        name: format!("{}/{}", self.title, volume.name),
                         size: volume.size,
                     })
                     .await?;
@@ -895,6 +904,16 @@ mod tests {
 
     #[tokio::test]
     async fn compile() {
+        let (pool, file) = buckle::testutil::create_zpool("charon-package-compile").unwrap();
+
+        let buckle_socket = buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: "".into(), // ovewrites socket on create, not sure why
+            zfs: buckle::config::ZFSConfig { pool },
+            log_level: buckle::config::LogLevel::Debug,
+        }))
+        .await
+        .unwrap();
+
         let dir = tempfile::tempdir().unwrap();
         let packages = &[SourcePackage {
             title: PackageTitle {
@@ -931,7 +950,7 @@ mod tests {
         }
 
         let pkg = pr.load("plex", "1.2.3").unwrap();
-        let out = pkg.compile(&"/tmp/buckled.sock".into()).await.unwrap();
+        let out = pkg.compile(&buckle_socket).await.unwrap();
 
         assert_eq!(
             out,
@@ -943,6 +962,8 @@ mod tests {
                 },
                 ..Default::default()
             }
-        )
+        );
+
+        let _ = buckle::testutil::destroy_zpool("charon-package-compile", Some(&file));
     }
 }

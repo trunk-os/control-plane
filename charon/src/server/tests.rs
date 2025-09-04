@@ -5,11 +5,33 @@ use crate::{
 use std::path::PathBuf;
 use tempfile::{tempdir, NamedTempFile};
 
-async fn start_server(debug: bool) -> (PathBuf, Option<PathBuf>) {
+async fn start_server(
+    debug: bool,
+    pool: Option<String>,
+) -> (PathBuf, Option<PathBuf>, Option<(PathBuf, String, String)>) {
     let tf = NamedTempFile::new().unwrap();
     let (_, path) = tf.keep().unwrap();
     let pb = path.to_path_buf();
     let pb2 = pb.clone();
+
+    let buckle_info = if let Some(pool) = pool {
+        let (zpool, file) = buckle::testutil::create_zpool(&pool).unwrap();
+
+        let buckle_socket = buckle::testutil::make_server(Some(buckle::config::Config {
+            socket: "".into(), // ovewrites socket on create, not sure why
+            zfs: buckle::config::ZFSConfig {
+                pool: zpool.clone(),
+            },
+            log_level: buckle::config::LogLevel::Debug,
+        }))
+        .await
+        .unwrap();
+        Some((buckle_socket, zpool, file))
+    } else {
+        None
+    };
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     let systemd_root = if debug {
         Some(crate::SYSTEMD_SERVICE_ROOT.into())
@@ -17,6 +39,8 @@ async fn start_server(debug: bool) -> (PathBuf, Option<PathBuf>) {
         let tf = tempdir().unwrap();
         Some(tf.keep())
     };
+
+    let bi = buckle_info.clone();
 
     let inner = systemd_root.clone();
     tokio::spawn(async move {
@@ -30,7 +54,7 @@ async fn start_server(debug: bool) -> (PathBuf, Option<PathBuf>) {
             },
             systemd_root: inner,
             charon_path: Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
-            buckle_socket: "/tmp/buckled.sock".into(),
+            buckle_socket: bi.map(|x| x.0).unwrap_or("/tmp/buckled.sock".into()),
         })
         .start()
         .unwrap()
@@ -40,12 +64,12 @@ async fn start_server(debug: bool) -> (PathBuf, Option<PathBuf>) {
 
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-    (path, systemd_root)
+    (path, systemd_root, buckle_info)
 }
 
 #[tokio::test]
 async fn test_ping() {
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
     client.status().await.unwrap().ping().await.unwrap();
 }
 
@@ -53,7 +77,8 @@ async fn test_ping() {
 async fn test_write_unit_real() {
     // real mode. validate written. this test also reloads systemd (which doesn't pick up anything
     // new because of the temporary path to write to) so it needs to be run as root.
-    let (socket, systemd_path) = start_server(false).await;
+    let (socket, systemd_path, buckle_info) =
+        start_server(false, Some("write-unit-real".into())).await;
     let client = Client::new(socket).unwrap();
 
     assert!(client
@@ -102,13 +127,19 @@ Alias=podman-test-0.0.2.service
         .await
         .is_ok());
 
-    assert!(!std::fs::exists(systemd_path.join("podman-test-0.0.2.service")).unwrap())
+    assert!(!std::fs::exists(systemd_path.join("podman-test-0.0.2.service")).unwrap());
+    if let Some(buckle_info) = buckle_info {
+        let _ = buckle::testutil::destroy_zpool("write-unit-real", Some(&buckle_info.2));
+    }
 }
 
 #[tokio::test]
 async fn test_write_unit() {
     // debug mode
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let (socket, _, buckle_info) = start_server(true, Some("write-unit".into())).await;
+
+    let client = Client::new(socket).unwrap();
+
     client
         .control()
         .await
@@ -116,11 +147,15 @@ async fn test_write_unit() {
         .write_unit("podman-test", "0.0.2", "/tmp/volroot".into())
         .await
         .unwrap();
+
+    if let Some(buckle_info) = buckle_info {
+        let _ = buckle::testutil::destroy_zpool("write-unit", Some(&buckle_info.2));
+    }
 }
 
 #[tokio::test]
 async fn test_get_prompts() {
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
     let prompts = client
         .query()
         .await
@@ -179,7 +214,7 @@ async fn set_get_responses() {
         },
     ]);
 
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
     client
         .query()
         .await
@@ -225,7 +260,7 @@ async fn list() {
         }
     }
 
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
 
     let list = client.query().await.unwrap().list().await.unwrap();
     assert_eq!(list, v)
@@ -235,7 +270,7 @@ async fn list() {
 async fn installer() {
     use crate::{InstallStatus, PackageTitle};
 
-    let client = Client::new(start_server(true).await.0.to_path_buf()).unwrap();
+    let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
     client
         .control()
         .await
