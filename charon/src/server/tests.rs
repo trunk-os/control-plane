@@ -102,7 +102,7 @@ async fn test_write_unit_real() {
 		.control()
 		.await
 		.unwrap()
-		.write_unit("podman-test", "0.0.2", "/tmp/volroot".into())
+		.write_unit("podman-test", "0.0.2")
 		.await
 		.unwrap();
 
@@ -167,7 +167,7 @@ async fn test_write_unit() {
 		.control()
 		.await
 		.unwrap()
-		.write_unit("podman-test", "0.0.2", "/tmp/volroot".into())
+		.write_unit("podman-test", "0.0.2")
 		.await
 		.unwrap();
 

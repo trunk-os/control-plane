@@ -103,6 +103,10 @@ impl Config {
 		Ok(this)
 	}
 
+	pub fn buckle(&self) -> Result<buckle::client::Client> {
+		buckle::client::Client::new(self.buckle_socket.clone())
+	}
+
 	pub fn registry(&self) -> Registry {
 		Registry::new(self.registry.path.clone())
 	}

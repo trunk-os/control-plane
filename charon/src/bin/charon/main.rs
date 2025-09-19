@@ -182,8 +182,8 @@ async fn main() -> Result<()> {
 
 			systemd
 				.create_unit(
-					args.registry_path.unwrap_or(cwd.clone()),
-					cu_args.volume_root,
+					&args.registry_path.unwrap_or(cwd.clone()),
+					&cu_args.volume_root,
 				)
 				.await?;
 
@@ -215,7 +215,6 @@ async fn main() -> Result<()> {
 						.write_unit(
 							&wu_args.package_name,
 							&wu_args.package_version,
-							wu_args.volume_root,
 						)
 						.await?;
 					eprintln!(

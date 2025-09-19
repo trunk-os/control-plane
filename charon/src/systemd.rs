@@ -54,8 +54,8 @@ impl SystemdUnit {
 		.into()
 	}
 
-	pub fn unit(
-		&self, registry_path: PathBuf, volume_root: PathBuf,
+	pub async fn unit(
+		&self, registry_path: &PathBuf, volume_root: &PathBuf,
 	) -> Result<String> {
 		let mut out = String::new();
 		let mut variable = String::new();
@@ -73,12 +73,11 @@ impl SystemdUnit {
 						}
 						"PACKAGE_FILENAME" => out
 							.push_str(&self.package.title.to_string()),
-						"VOLUME_ROOT" => out.push_str(
-							volume_root.to_str().unwrap_or_default(),
-						),
-						"REGISTRY_PATH" => out.push_str(
-							registry_path.to_str().unwrap_or_default(),
-						),
+						"REGISTRY_PATH" => out
+							.push_str(&registry_path.to_string_lossy()),
+						"VOLUME_ROOT" => {
+							out.push_str(&volume_root.to_string_lossy())
+						}
 						"CHARON_PATH" => {
 							out.push_str(
 								self.charon_path
@@ -114,7 +113,7 @@ impl SystemdUnit {
 	}
 
 	pub async fn create_unit(
-		&self, registry_path: PathBuf, volume_root: PathBuf,
+		&self, registry_path: &PathBuf, volume_root: &PathBuf,
 	) -> Result<()> {
 		let mut f = std::fs::OpenOptions::new()
 			.create(true)
@@ -130,6 +129,7 @@ impl SystemdUnit {
 			})?;
 		f.write_all(
 			self.unit(registry_path, volume_root)
+				.await
 				.map_err(|e| {
 					anyhow!(
 						"Could not generate service unit {}: {}",
@@ -147,6 +147,7 @@ impl SystemdUnit {
 			)
 		})?;
 
+		// FIXME: this should not be here! use GRPC!
 		let client = buckle::systemd::Systemd::new_system().await?;
 		client.reload().await?;
 		client
@@ -160,6 +161,7 @@ impl SystemdUnit {
 	}
 
 	pub async fn remove_unit(&self) -> Result<()> {
+		// FIXME: this should not be here! use GRPC!
 		let client = buckle::systemd::Systemd::new_system().await?;
 		let _ = client
 			.stop(format!("{}.service", self.package.title.to_string()))
@@ -180,10 +182,11 @@ impl SystemdUnit {
 
 #[cfg(test)]
 mod tests {
+	use std::path::PathBuf;
+
 	use super::SystemdUnit;
 	use crate::{CompiledPackage, Registry, SYSTEMD_SERVICE_ROOT};
 	use anyhow::Result;
-	use tempfile::TempDir;
 
 	async fn load(
 		registry: &Registry, name: &str, version: &str,
@@ -210,8 +213,6 @@ mod tests {
 	#[tokio::test]
 	async fn unit_contents() {
 		let registry = Registry::new("testdata/registry".into());
-		let td = TempDir::new().unwrap();
-		let path = td.path();
 		let pkg =
 			load(&registry, "podman-test", "0.0.2").await.unwrap();
 		let unit = SystemdUnit::new(
@@ -220,27 +221,24 @@ mod tests {
 			Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
 		);
 		let text = unit
-			.unit("testdata/registry".into(), path.to_path_buf())
+			.unit(&registry.path(), &PathBuf::from("/tmp/volroot"))
+			.await
 			.unwrap();
 		assert_eq!(
 			text,
-			format!(
-				r#"
+			r#"
 [Unit]
 Description=Charon launcher for podman-test, version 0.0.2
 
 [Service]
-ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 {}
-ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 {}
+ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /tmp/volroot
+ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /tmp/volroot
 Restart=always
 TimeoutSec=300
 
 [Install]
 Alias=podman-test-0.0.2.service
 "#,
-				path.display(),
-				path.display()
-			)
 		);
 	}
 }

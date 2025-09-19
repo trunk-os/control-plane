@@ -1,13 +1,15 @@
 use crate::{
 	Config, InputType, PromptResponses, ProtoPackageInstalled,
-	ProtoPackageTitle, ProtoPackageTitleList,
-	ProtoPackageTitleWithRoot, ProtoPrompt, ProtoPromptResponses,
-	ProtoPrompts, ProtoType, ResponseRegistry, SystemdUnit,
+	ProtoPackageTitle, ProtoPackageTitleList, ProtoPrompt,
+	ProtoPromptResponses, ProtoPrompts, ProtoType, ResponseRegistry,
+	SystemdUnit,
 	control_server::{Control, ControlServer},
 	query_server::{Query, QueryServer},
 	status_server::{Status, StatusServer},
 };
-use std::{fs::Permissions, os::unix::fs::PermissionsExt};
+use std::{
+	fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf,
+};
 use tonic::{Result, body::Body, transport::Server as TransportServer};
 use tonic_middleware::{Middleware, MiddlewareLayer, ServiceBound};
 use tracing::{error, info};
@@ -132,13 +134,10 @@ impl Control for Server {
 		})?;
 
 		Ok(tonic::Response::new(
-			self.write_unit(tonic::Request::new(
-				ProtoPackageTitleWithRoot {
-					name: title.name,
-					version: title.version,
-					volume_root: "/tmp/volroot".into(),
-				},
-			))
+			self.write_unit(tonic::Request::new(ProtoPackageTitle {
+				name: title.name,
+				version: title.version,
+			}))
 			.await?
 			.into_inner(),
 		))
@@ -179,7 +178,7 @@ impl Control for Server {
 	}
 
 	async fn write_unit(
-		&self, title: tonic::Request<ProtoPackageTitleWithRoot>,
+		&self, title: tonic::Request<ProtoPackageTitle>,
 	) -> Result<tonic::Response<()>> {
 		let r = self.config.registry();
 		let title = title.into_inner();
@@ -200,11 +199,14 @@ impl Control for Server {
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
 		);
-		unit.create_unit(r.path(), title.volume_root.into())
-			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+		unit.create_unit(
+			&self.config.registry.path,
+			&PathBuf::from("/tmp/volroot"),
+		)
+		.await
+		.map_err(|e| {
+			tonic::Status::new(tonic::Code::Internal, e.to_string())
+		})?;
 
 		info!("Wrote unit to {}", unit.filename().display());
 

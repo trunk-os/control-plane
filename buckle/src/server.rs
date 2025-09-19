@@ -2,7 +2,7 @@ use crate::{
 	grpc::{
 		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitSettings,
 		PingResult, UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter,
-		ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsVolume,
+		ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
@@ -215,6 +215,14 @@ impl Status for Server {
 
 #[tonic::async_trait]
 impl Zfs for Server {
+	async fn root_path(
+		&self, _: Request<()>,
+	) -> Result<Response<ZfsRoot>> {
+		Ok(Response::new(ZfsRoot {
+			root: format!("/{}", self.config.zfs.pool),
+		}))
+	}
+
 	async fn modify_dataset(
 		&self, info: Request<ZfsModifyDataset>,
 	) -> Result<Response<()>> {

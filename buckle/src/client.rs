@@ -136,6 +136,14 @@ impl StatusClient {
 }
 
 impl ZFSClient {
+	pub async fn root_path(&mut self) -> Result<String> {
+		Ok(self
+			.client
+			.root_path(Request::new(()))
+			.await
+			.map(|x| x.into_inner().root)?)
+	}
+
 	pub async fn create_dataset(
 		&mut self, dataset: Dataset,
 	) -> Result<()> {

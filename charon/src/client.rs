@@ -2,8 +2,7 @@ use crate::grpc::query_client::QueryClient as GRPCQueryClient;
 use crate::grpc::status_client::StatusClient as GRPCStatusClient;
 use crate::{
 	InputType, InstallStatus, PackageTitle, Prompt, PromptCollection,
-	PromptResponses, ProtoPackageTitleWithRoot, ProtoPromptResponses,
-	ProtoType,
+	PromptResponses, ProtoPromptResponses, ProtoType,
 };
 use crate::{
 	ProtoPackageTitle,
@@ -112,12 +111,11 @@ impl ControlClient {
 	}
 
 	pub async fn write_unit(
-		&mut self, name: &str, version: &str, volume_root: PathBuf,
+		&mut self, name: &str, version: &str,
 	) -> Result<()> {
-		let out = ProtoPackageTitleWithRoot {
+		let out = ProtoPackageTitle {
 			name: name.into(),
 			version: version.into(),
-			volume_root: volume_root.to_str().unwrap().to_string(),
 		};
 
 		Ok(self

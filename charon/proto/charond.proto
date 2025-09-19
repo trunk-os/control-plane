@@ -6,18 +6,12 @@ service Status {
   rpc Ping (google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
-message ProtoPackageTitleWithRoot {
-  string name        = 1;
-  string version     = 2;
-  string volume_root = 3;
-}
-
 service Control {
-  rpc Install(ProtoPackageTitle)           returns (google.protobuf.Empty);
-  rpc Uninstall(ProtoPackageTitle)         returns (google.protobuf.Empty);
-  rpc Installed(ProtoPackageTitle)         returns (ProtoPackageInstalled);
-  rpc WriteUnit(ProtoPackageTitleWithRoot) returns (google.protobuf.Empty);
-  rpc RemoveUnit(ProtoPackageTitle)        returns (google.protobuf.Empty);
+  rpc Install(ProtoPackageTitle)    returns (google.protobuf.Empty);
+  rpc Uninstall(ProtoPackageTitle)  returns (google.protobuf.Empty);
+  rpc Installed(ProtoPackageTitle)  returns (ProtoPackageInstalled);
+  rpc WriteUnit(ProtoPackageTitle)  returns (google.protobuf.Empty);
+  rpc RemoveUnit(ProtoPackageTitle) returns (google.protobuf.Empty);
 }
 
 message ProtoPackageTitle {
