@@ -28,21 +28,17 @@ where
 		// hack around type specialization
 		if TypeId::of::<E>() == TypeId::of::<ProblemDetails>() {
 			Self(
-				<(dyn Any + 'static)>::downcast_ref::<ProblemDetails>(
-					&value,
-				)
-				.unwrap()
-				.clone(),
+				<dyn Any + 'static>::downcast_ref::<ProblemDetails>(&value)
+					.unwrap()
+					.clone(),
 			)
 		} else if TypeId::of::<E>() == TypeId::of::<tonic::Status>() {
 			Self(
 				ProblemDetails::new()
 					.with_detail(
-						<(dyn Any + 'static)>::downcast_ref::<
-							tonic::Status,
-						>(&value)
-						.unwrap()
-						.message(),
+						<dyn Any + 'static>::downcast_ref::<tonic::Status>(&value)
+							.unwrap()
+							.message(),
 					)
 					.with_title("Uncategorized Error"),
 			)
@@ -86,9 +82,7 @@ where
 
 pub(crate) struct Account<T>(pub T);
 
-async fn read_jwt(
-	parts: &mut Parts, state: &Arc<ServerState>,
-) -> Result<Option<User>> {
+async fn read_jwt(parts: &mut Parts, state: &Arc<ServerState>) -> Result<Option<User>> {
 	// FIXME: we want to hide the error from the end user to avoid giving them information about this
 	// process. We should, however, log the errors for debugging purposes, which isn't done yet.
 	let err = AppError(
@@ -109,24 +103,17 @@ async fn read_jwt(
 		.strip_prefix("Bearer ")
 		.unwrap();
 	let signing_key: Hmac<sha2::Sha384> =
-		Hmac::new_from_slice(&state.config.signing_key)
-			.map_err(|_| err.clone())?;
+		Hmac::new_from_slice(&state.config.signing_key).map_err(|_| err.clone())?;
 
-	let token: Token<Header, JWTClaims, Verified> =
-		match token.verify_with_key(&signing_key) {
-			Ok(x) => x,
-			Err(e) => {
-				error!("Error verifying token: {}", e);
-				return Err(err);
-			}
-		};
+	let token: Token<Header, JWTClaims, Verified> = match token.verify_with_key(&signing_key) {
+		Ok(x) => x,
+		Err(e) => {
+			error!("Error verifying token: {}", e);
+			return Err(err);
+		}
+	};
 
-	let session = match Session::from_jwt(
-		&state.db,
-		token.claims().clone(),
-	)
-	.await
-	{
+	let session = match Session::from_jwt(&state.db, token.claims().clone()).await {
 		Ok(x) => x,
 		Err(e) => {
 			error!("Error locating session from JWT: {}", e);
@@ -139,10 +126,7 @@ async fn read_jwt(
 			if user.deleted_at.is_none() {
 				Ok(Some(user.into_inner()))
 			} else {
-				error!(
-					"User was deleted at {}",
-					user.deleted_at.unwrap()
-				);
+				error!("User was deleted at {}", user.deleted_at.unwrap());
 				Ok(None)
 			}
 		}
@@ -201,9 +185,7 @@ impl FromRequestParts<Arc<ServerState>> for Log {
 				.clone(),
 		);
 
-		if let Some(user) =
-			read_jwt(parts, state).await.unwrap_or_default()
-		{
+		if let Some(user) = read_jwt(parts, state).await.unwrap_or_default() {
 			this.0 = this.0.from_user(&user).clone();
 		}
 

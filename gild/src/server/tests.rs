@@ -7,23 +7,17 @@ mod systemd {
 
 	#[tokio::test]
 	async fn list() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		assert!(
 			client
-				.post::<Option<String>, buckle::systemd::Unit>(
-					"/systemd/list",
-					None
-				)
+				.post::<Option<String>, buckle::systemd::Unit>("/systemd/list", None)
 				.await
 				.is_err()
 		);
@@ -37,10 +31,7 @@ mod systemd {
 			.unwrap();
 
 		let list = client
-			.post::<Option<String>, Vec<buckle::systemd::Unit>>(
-				"/systemd/list",
-				None,
-			)
+			.post::<Option<String>, Vec<buckle::systemd::Unit>>("/systemd/list", None)
 			.await
 			.unwrap();
 
@@ -66,23 +57,17 @@ mod systemd {
 
 	#[tokio::test]
 	async fn log() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		assert!(
 			client
-				.post::<Option<String>, buckle::systemd::Unit>(
-					"/systemd/log",
-					None
-				)
+				.post::<Option<String>, buckle::systemd::Unit>("/systemd/log", None)
 				.await
 				.is_err()
 		);
@@ -96,10 +81,7 @@ mod systemd {
 			.unwrap();
 
 		let list = client
-			.post::<Option<String>, Vec<buckle::systemd::Unit>>(
-				"/systemd/list",
-				None,
-			)
+			.post::<Option<String>, Vec<buckle::systemd::Unit>>("/systemd/list", None)
 			.await
 			.unwrap();
 
@@ -131,8 +113,7 @@ mod systemd {
 
 mod packages {
 	use charon::{
-		Input, InputType, PackageTitle, Prompt, PromptCollection,
-		PromptResponse, PromptResponses,
+		Input, InputType, PackageTitle, Prompt, PromptCollection, PromptResponse, PromptResponses,
 	};
 
 	use crate::{
@@ -143,17 +124,14 @@ mod packages {
 
 	#[tokio::test]
 	async fn get_prompts() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		assert!(
 			client
@@ -188,25 +166,25 @@ mod packages {
 			.unwrap();
 
 		assert_eq!(
-            collection,
-            PromptCollection(vec![
-                Prompt {
-                    template: "private_path".into(),
-                    question: "Where do you want this mounted?".into(),
-                    input_type: InputType::String,
-                },
-                Prompt {
-                    template: "private_size".into(),
-                    question: "How big should it be?".into(),
-                    input_type: InputType::Integer,
-                },
-                Prompt {
-                    template: "private_recreate".into(),
-                    question: "Should we recreate this volume if it already exists?".into(),
-                    input_type: InputType::Boolean,
-                },
-            ])
-        )
+			collection,
+			PromptCollection(vec![
+				Prompt {
+					template: "private_path".into(),
+					question: "Where do you want this mounted?".into(),
+					input_type: InputType::String,
+				},
+				Prompt {
+					template: "private_size".into(),
+					question: "How big should it be?".into(),
+					input_type: InputType::Integer,
+				},
+				Prompt {
+					template: "private_recreate".into(),
+					question: "Should we recreate this volume if it already exists?".into(),
+					input_type: InputType::Boolean,
+				},
+			])
+		)
 	}
 
 	#[tokio::test]
@@ -226,17 +204,14 @@ mod packages {
 			},
 		]);
 
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		assert!(
 			client
@@ -289,11 +264,9 @@ mod packages {
 
 	#[tokio::test]
 	async fn install() {
-		let (pool, file) =
-			buckle::testutil::create_zpool("gild-install").unwrap();
+		let (pool, file) = buckle::testutil::create_zpool("gild-install").unwrap();
 
-		let mut client =
-			TestClient::new(start_server(Some(pool)).await.unwrap());
+		let mut client = TestClient::new(start_server(Some(pool)).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
@@ -389,10 +362,7 @@ mod packages {
 			vec![]
 		);
 
-		let _ = buckle::testutil::destroy_zpool(
-			"gild-install",
-			Some(&file),
-		);
+		let _ = buckle::testutil::destroy_zpool("gild-install", Some(&file));
 	}
 }
 
@@ -407,10 +377,8 @@ mod service {
 
 	#[tokio::test]
 	async fn ping() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
-		let results =
-			client.get::<PingResult>("/status/ping").await.unwrap();
+		let mut client = TestClient::new(start_server(None).await.unwrap());
+		let results = client.get::<PingResult>("/status/ping").await.unwrap();
 		assert!(results.info.is_none());
 
 		let login = User {
@@ -418,9 +386,7 @@ mod service {
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -430,8 +396,7 @@ mod service {
 			.await
 			.unwrap();
 
-		let results =
-			client.get::<PingResult>("/status/ping").await.unwrap();
+		let results = client.get::<PingResult>("/status/ping").await.unwrap();
 		assert!(results.info.is_some());
 		let info: Info = results.info.unwrap().into();
 		assert_ne!(info.uptime, 0);
@@ -453,21 +418,16 @@ mod user {
 
 	#[tokio::test]
 	async fn login_logout() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
-		assert!(
-			client.post::<(), Vec<User>>("/users", ()).await.is_err()
-		);
+		assert!(client.post::<(), Vec<User>>("/users", ()).await.is_err());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -477,33 +437,26 @@ mod user {
 			.await
 			.unwrap();
 
-		assert!(
-			client.post::<(), Vec<User>>("/users", ()).await.is_ok()
-		);
+		assert!(client.post::<(), Vec<User>>("/users", ()).await.is_ok());
 	}
 
 	#[tokio::test]
 	async fn first_time_setup() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		let login = User {
 			username: "test-login2".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_err()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_err());
 
 		client
 			.login(Authentication {
@@ -526,9 +479,7 @@ mod user {
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -541,17 +492,14 @@ mod user {
 
 	#[tokio::test]
 	async fn users_validate() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -561,8 +509,7 @@ mod user {
 			.await
 			.unwrap();
 
-		let list =
-			client.post::<(), Vec<User>>("/users", ()).await.unwrap();
+		let list = client.post::<(), Vec<User>>("/users", ()).await.unwrap();
 		assert_eq!(list.len(), 1);
 
 		let table: &[User] = &[
@@ -710,17 +657,14 @@ mod user {
 
 	#[tokio::test]
 	async fn users_crud() {
-		let mut client =
-			TestClient::new(start_server(None).await.unwrap());
+		let mut client = TestClient::new(start_server(None).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -730,8 +674,7 @@ mod user {
 			.await
 			.unwrap();
 
-		let list =
-			client.post::<(), Vec<User>>("/users", ()).await.unwrap();
+		let list = client.post::<(), Vec<User>>("/users", ()).await.unwrap();
 		assert_eq!(list.len(), 1);
 
 		let table: &[User] = &[
@@ -791,8 +734,7 @@ mod user {
 			);
 		}
 
-		let list =
-			client.post::<(), Vec<User>>("/users", ()).await.unwrap();
+		let list = client.post::<(), Vec<User>>("/users", ()).await.unwrap();
 		assert_eq!(list.len(), table.len() + 1); // add the logged in user
 
 		for item in created.iter() {
@@ -809,10 +751,7 @@ mod user {
 		for mut item in created.clone().into_iter() {
 			item.realname = Some("new realname".into());
 			client
-				.post::<User, ()>(
-					&format!("/user/{}", item.id),
-					item.clone(),
-				)
+				.post::<User, ()>(&format!("/user/{}", item.id), item.clone())
 				.await
 				.unwrap();
 			assert_eq!(
@@ -831,8 +770,7 @@ mod user {
 				.unwrap();
 		}
 
-		let list =
-			client.post::<(), Vec<User>>("/users", ()).await.unwrap();
+		let list = client.post::<(), Vec<User>>("/users", ()).await.unwrap();
 		assert_eq!(list.len(), table.len() + 1);
 
 		// check that our accounts actually got deleted
@@ -871,20 +809,15 @@ mod zfs {
 	#[tokio::test]
 	async fn zfs_errors() {
 		let _ = buckle::testutil::destroy_zpool("errors", None);
-		let (pool, file) =
-			buckle::testutil::create_zpool("errors").unwrap();
-		let mut client = TestClient::new(
-			start_server(Some(pool.clone())).await.unwrap(),
-		);
+		let (pool, file) = buckle::testutil::create_zpool("errors").unwrap();
+		let mut client = TestClient::new(start_server(Some(pool.clone())).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -909,13 +842,12 @@ mod zfs {
 
 		let err = res.err().unwrap().to_string();
 
-		let map: HashMap<String, String> =
-			serde_json::from_str(&err).unwrap();
+		let map: HashMap<String, String> = serde_json::from_str(&err).unwrap();
 
 		assert_eq!(
-            map.get("detail").unwrap().to_string(),
-            "Error: cannot open 'buckle-test-errors/volume': dataset does not exist".to_string()
-        );
+			map.get("detail").unwrap().to_string(),
+			"Error: cannot open 'buckle-test-errors/volume': dataset does not exist".to_string()
+		);
 
 		buckle::testutil::destroy_zpool("errors", Some(&file)).unwrap();
 	}
@@ -923,20 +855,15 @@ mod zfs {
 	#[tokio::test]
 	async fn zfs_basic() {
 		let _ = buckle::testutil::destroy_zpool("gild-basic", None);
-		let (pool, file) =
-			buckle::testutil::create_zpool("gild-basic").unwrap();
-		let mut client = TestClient::new(
-			start_server(Some(pool.clone())).await.unwrap(),
-		);
+		let (pool, file) = buckle::testutil::create_zpool("gild-basic").unwrap();
+		let mut client = TestClient::new(start_server(Some(pool.clone())).await.unwrap());
 
 		let login = User {
 			username: "test-login".into(),
 			plaintext_password: Some("test-password".into()),
 			..Default::default()
 		};
-		assert!(
-			client.put::<User, User>("/users", login).await.is_ok()
-		);
+		assert!(client.put::<User, User>("/users", login).await.is_ok());
 
 		client
 			.login(Authentication {
@@ -946,8 +873,7 @@ mod zfs {
 			.await
 			.unwrap();
 
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "").await.unwrap();
 		assert_eq!(result.len(), 0);
 		client
 			.post::<_, ()>(
@@ -959,14 +885,10 @@ mod zfs {
 			)
 			.await
 			.unwrap();
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "").await.unwrap();
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].name, "dataset");
-		assert_eq!(
-			result[0].full_name,
-			"buckle-test-gild-basic/dataset"
-		);
+		assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset");
 		assert_ne!(result[0].size, 0);
 		assert_ne!(result[0].avail, 0);
 		assert_ne!(result[0].refer, 0);
@@ -985,17 +907,12 @@ mod zfs {
 			)
 			.await
 			.unwrap();
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "").await.unwrap();
 		assert_eq!(result.len(), 2);
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "volume").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "volume").await.unwrap();
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].name, "volume");
-		assert_eq!(
-			result[0].full_name,
-			"buckle-test-gild-basic/volume"
-		);
+		assert_eq!(result[0].full_name, "buckle-test-gild-basic/volume");
 		assert_ne!(result[0].size, 0);
 		assert_ne!(result[0].avail, 0);
 		assert_ne!(result[0].refer, 0);
@@ -1016,32 +933,21 @@ mod zfs {
 			.await
 			.unwrap();
 
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "volume2").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "volume2").await.unwrap();
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].name, "volume2");
-		assert_eq!(
-			result[0].full_name,
-			"buckle-test-gild-basic/volume2"
-		);
+		assert_eq!(result[0].full_name, "buckle-test-gild-basic/volume2");
 		assert_ne!(result[0].size, 0);
-		assert!(
-			result[0].size < 6 * 1024 * 1024
-				&& result[0].size > 4 * 1024 * 1024
-		);
+		assert!(result[0].size < 6 * 1024 * 1024 && result[0].size > 4 * 1024 * 1024);
 		assert_ne!(result[0].avail, 0);
 		assert_ne!(result[0].refer, 0);
 		assert_ne!(result[0].used, 0);
 		assert_eq!(result[0].mountpoint, None);
 
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "dataset").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "dataset").await.unwrap();
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].name, "dataset");
-		assert_eq!(
-			result[0].full_name,
-			"buckle-test-gild-basic/dataset"
-		);
+		assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset");
 		assert_ne!(result[0].size, 0);
 		assert_ne!(result[0].avail, 0);
 		assert_ne!(result[0].refer, 0);
@@ -1065,14 +971,10 @@ mod zfs {
 			.await
 			.unwrap();
 
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "dataset2").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "dataset2").await.unwrap();
 		assert_eq!(result.len(), 1);
 		assert_eq!(result[0].name, "dataset2");
-		assert_eq!(
-			result[0].full_name,
-			"buckle-test-gild-basic/dataset2"
-		);
+		assert_eq!(result[0].full_name, "buckle-test-gild-basic/dataset2");
 		assert_ne!(result[0].size, 0);
 		assert_ne!(result[0].avail, 0);
 		assert_ne!(result[0].refer, 0);
@@ -1086,21 +988,17 @@ mod zfs {
 			.post::<_, ()>("/zfs/destroy", "dataset2")
 			.await
 			.unwrap();
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "dataset2").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "dataset2").await.unwrap();
 		assert_eq!(result.len(), 0);
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "").await.unwrap();
 		assert_eq!(result.len(), 1);
 		client
 			.post::<_, ()>("/zfs/destroy", "volume2")
 			.await
 			.unwrap();
-		let result: Vec<ZFSStat> =
-			client.post("/zfs/list", "volume2").await.unwrap();
+		let result: Vec<ZFSStat> = client.post("/zfs/list", "volume2").await.unwrap();
 		assert_eq!(result.len(), 0);
 
-		buckle::testutil::destroy_zpool("gild-basic", Some(&file))
-			.unwrap();
+		buckle::testutil::destroy_zpool("gild-basic", Some(&file)).unwrap();
 	}
 }

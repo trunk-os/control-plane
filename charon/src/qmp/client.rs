@@ -1,6 +1,4 @@
-use super::messages::{
-	ErrorReturn, Event, GenericReturn, JobInfo, QueryBlock, QueryJobs,
-};
+use super::messages::{ErrorReturn, Event, GenericReturn, JobInfo, QueryBlock, QueryJobs};
 use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 use std::{
@@ -17,10 +15,10 @@ pub struct Client {
 impl Client {
 	pub fn new(us: PathBuf) -> std::io::Result<Self> {
 		let stream = UnixStream::connect(us)?;
-		return Ok(Self {
+		Ok(Self {
 			output: stream.try_clone()?,
 			input: BufReader::new(stream),
-		});
+		})
 	}
 
 	fn read_input<T>(&mut self) -> Result<T>
@@ -28,7 +26,7 @@ impl Client {
 		T: for<'de> serde::Deserialize<'de> + Default + std::fmt::Debug,
 	{
 		let mut buf = String::new();
-		while let Ok(_) = self.input.read_line(&mut buf) {
+		while self.input.read_line(&mut buf).is_ok() {
 			if buf.ends_with("\r\n}\r\n") {
 				match serde_json::from_str::<T>(&buf) {
 					Ok(obj) => {
@@ -36,18 +34,12 @@ impl Client {
 					}
 					Err(e) => {
 						// incoming event, ignore it and retry
-						if let Ok(_) =
-							serde_json::from_str::<Event>(&buf)
-						{
+						if serde_json::from_str::<Event>(&buf).is_ok() {
 							buf = String::new();
-						} else if let Ok(e) =
-							serde_json::from_str::<ErrorReturn>(&buf)
-						{
+						} else if let Ok(e) = serde_json::from_str::<ErrorReturn>(&buf) {
 							// got an error, return it
 							return Err(e.into());
-						} else if let Ok(ret) =
-							serde_json::from_str::<GenericReturn>(&buf)
-						{
+						} else if let Ok(ret) = serde_json::from_str::<GenericReturn>(&buf) {
 							return ret.into();
 						} else {
 							// return the original error
@@ -58,11 +50,11 @@ impl Client {
 			}
 		}
 
-		return Err(anyhow!("Read past end of input"));
+		Err(anyhow!("Read past end of input"))
 	}
 
 	fn send_output(&mut self, val: Value) -> Result<()> {
-		match self.output.write_all(&val.to_string().as_bytes()) {
+		match self.output.write_all(val.to_string().as_bytes()) {
 			Ok(_) => Ok(()),
 			Err(e) => Err(anyhow!(e)),
 		}
@@ -78,9 +70,7 @@ impl Client {
 		self.read_input()
 	}
 
-	pub fn send_command<T>(
-		&mut self, execute: &str, args: Option<Value>,
-	) -> Result<T>
+	pub fn send_command<T>(&mut self, execute: &str, args: Option<Value>) -> Result<T>
 	where
 		T: for<'de> serde::Deserialize<'de> + Default + std::fmt::Debug,
 	{
@@ -112,10 +102,10 @@ impl Client {
 		let mut disks = Vec::new();
 
 		for item in blocks {
-			if let Some(inserted) = item.inserted {
-				if let Some(name) = inserted.node_name {
-					disks.push(name)
-				}
+			if let Some(inserted) = item.inserted
+				&& let Some(name) = inserted.node_name
+			{
+				disks.push(name)
 			}
 		}
 
@@ -156,10 +146,7 @@ impl Client {
 	pub fn delete_job(&mut self, id: &str) -> Result<()> {
 		loop {
 			let mut found = false;
-			let res = self.send_command::<QueryJobs>(
-				"job-dismiss",
-				Some(json!({"id": id})),
-			);
+			let res = self.send_command::<QueryJobs>("job-dismiss", Some(json!({"id": id})));
 			if let Ok(jobs) = res {
 				for job in &jobs.result {
 					if job.id == id {
@@ -178,17 +165,13 @@ impl Client {
 		Ok(())
 	}
 
-	fn cleanup_job(
-		&mut self, res: Result<GenericReturn, anyhow::Error>, id: &str,
-	) -> Result<()> {
+	fn cleanup_job(&mut self, res: Result<GenericReturn, anyhow::Error>, id: &str) -> Result<()> {
 		if let Err(e) = self.wait_for_job(id) {
 			self.delete_job(id)?;
 			return Err(e);
 		}
 
-		if let Err(e) = res {
-			return Err(e);
-		}
+		res?;
 
 		Ok(())
 	}

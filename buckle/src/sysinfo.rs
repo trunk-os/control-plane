@@ -33,25 +33,19 @@ impl Default for Info {
 			total_memory: s.total_memory(),
 			cpus: s.cpus().len(),
 			cpu_usage: s.global_cpu_usage(),
-			host_name: sysinfo::System::host_name()
-				.unwrap_or("trunk".into()),
-			kernel_version: sysinfo::System::kernel_version()
-				.unwrap_or("unknown".into()),
+			host_name: sysinfo::System::host_name().unwrap_or("trunk".into()),
+			kernel_version: sysinfo::System::kernel_version().unwrap_or("unknown".into()),
 			load_average: la,
 			processes: s.processes().len(),
 			total_disk: sysinfo::Disks::new_with_refreshed_list()
 				.iter()
-				.filter(|d| {
-					d.name().to_string_lossy().starts_with("trunk")
-				})
+				.filter(|d| d.name().to_string_lossy().starts_with("trunk"))
 				.map(|d| d.total_space())
 				.reduce(|a, e| a + e)
 				.unwrap_or_default(),
 			available_disk: sysinfo::Disks::new_with_refreshed_list()
 				.iter()
-				.filter(|d| {
-					d.name().to_string_lossy().starts_with("trunk")
-				})
+				.filter(|d| d.name().to_string_lossy().starts_with("trunk"))
 				.map(|d| d.available_space())
 				.reduce(|a, e| a + e)
 				.unwrap_or_default(),
@@ -82,8 +76,8 @@ impl From<SystemInfo> for Info {
 				value.load_average[2],
 			],
 			processes: value.processes as usize,
-			total_disk: value.total_disk.into(),
-			available_disk: value.available_disk.into(),
+			total_disk: value.total_disk,
+			available_disk: value.available_disk,
 		}
 	}
 }
@@ -100,8 +94,8 @@ impl From<Info> for SystemInfo {
 			kernel_version: value.kernel_version,
 			load_average: value.load_average.to_vec(),
 			processes: value.processes as u64,
-			total_disk: value.total_disk.into(),
-			available_disk: value.available_disk.into(),
+			total_disk: value.total_disk,
+			available_disk: value.available_disk,
 		}
 	}
 }

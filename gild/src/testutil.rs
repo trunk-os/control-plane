@@ -25,9 +25,7 @@ pub async fn find_listener() -> Result<SocketAddr> {
 	}
 }
 
-pub async fn make_config(
-	addr: Option<SocketAddr>, poolname: Option<String>,
-) -> Result<Config> {
+pub async fn make_config(addr: Option<SocketAddr>, poolname: Option<String>) -> Result<Config> {
 	std::fs::create_dir_all("tmp")?;
 	let tf = NamedTempFile::new_in("tmp")?;
 	let (_, dbfile) = tf.keep()?;
@@ -57,8 +55,7 @@ pub async fn make_config(
 		},
 		sockets: SocketConfig {
 			buckle: socket.clone(),
-			charon: start_charon("testdata/charon".into(), socket)
-				.await?,
+			charon: start_charon("testdata/charon".into(), socket).await?,
 		},
 
 		db: dbfile,
@@ -68,9 +65,7 @@ pub async fn make_config(
 	})
 }
 
-pub async fn start_server(
-	poolname: Option<String>,
-) -> Result<SocketAddr> {
+pub async fn start_server(poolname: Option<String>) -> Result<SocketAddr> {
 	let addr = find_listener().await?;
 	let ret = addr.clone();
 	tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -83,9 +78,7 @@ pub async fn start_server(
 	Ok(ret)
 }
 
-pub async fn start_charon(
-	registry: PathBuf, buckle_socket: PathBuf,
-) -> Result<PathBuf> {
+pub async fn start_charon(registry: PathBuf, buckle_socket: PathBuf) -> Result<PathBuf> {
 	std::fs::create_dir_all("tmp")?;
 	let tf = NamedTempFile::new_in("tmp")?;
 	let (_, path) = tf.keep()?;
@@ -119,13 +112,9 @@ pub struct TestClient {
 
 impl TestClient {
 	pub fn new(addr: SocketAddr) -> Self {
-		let store =
-			Arc::new(CookieStoreMutex::new(CookieStore::default()));
+		let store = Arc::new(CookieStoreMutex::new(CookieStore::default()));
 		Self {
-			client: Client::builder()
-				.cookie_provider(store)
-				.build()
-				.unwrap(),
+			client: Client::builder().cookie_provider(store).build().unwrap(),
 			baseurl: format!("http://{}", addr),
 			token: None,
 		}
@@ -144,12 +133,10 @@ impl TestClient {
 	where
 		T: for<'de> Deserialize<'de> + DeserializeOwned + Default,
 	{
-		let mut req =
-			self.client.get(&format!("{}{}", self.baseurl, path));
+		let mut req = self.client.get(&format!("{}{}", self.baseurl, path));
 
 		if let Some(token) = &self.token {
-			req = req
-				.header("Authorization", &format!("Bearer {}", token))
+			req = req.header("Authorization", &format!("Bearer {}", token))
 		}
 
 		let resp = req.send().await?;
@@ -174,12 +161,10 @@ impl TestClient {
 	where
 		T: for<'de> Deserialize<'de> + DeserializeOwned + Default,
 	{
-		let mut req =
-			self.client.delete(&format!("{}{}", self.baseurl, path));
+		let mut req = self.client.delete(&format!("{}{}", self.baseurl, path));
 
 		if let Some(token) = &self.token {
-			req = req
-				.header("Authorization", &format!("Bearer {}", token))
+			req = req.header("Authorization", &format!("Bearer {}", token))
 		}
 
 		let resp = req.send().await?;
@@ -215,8 +200,7 @@ impl TestClient {
 			.header("Content-type", "application/cbor");
 
 		if let Some(token) = &self.token {
-			req = req
-				.header("Authorization", &format!("Bearer {}", token))
+			req = req.header("Authorization", &format!("Bearer {}", token))
 		}
 
 		let resp = req.body(buf.into_inner().to_vec()).send().await?;
@@ -252,8 +236,7 @@ impl TestClient {
 			.header("Content-type", "application/cbor");
 
 		if let Some(token) = &self.token {
-			req = req
-				.header("Authorization", &format!("Bearer {}", token))
+			req = req.header("Authorization", &format!("Bearer {}", token))
 		}
 
 		let resp = req.body(buf.into_inner().to_vec()).send().await?;

@@ -1,6 +1,5 @@
 use crate::grpc::{
-	ZfsDataset, ZfsEntry, ZfsList, ZfsModifyDataset, ZfsModifyVolume,
-	ZfsType, ZfsVolume,
+	ZfsDataset, ZfsEntry, ZfsList, ZfsModifyDataset, ZfsModifyVolume, ZfsType, ZfsVolume,
 };
 use anyhow::{Result, anyhow};
 use fancy_duration::AsFancyDuration;
@@ -8,41 +7,31 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 use tracing::{debug, error, trace};
 
-#[derive(
-	Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum ZFSKind {
 	Dataset,
 	Volume,
 }
 
-#[derive(
-	Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Dataset {
 	pub name: String,
 	pub quota: Option<u64>,
 }
 
-#[derive(
-	Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ModifyDataset {
 	pub name: String,
 	pub modifications: Dataset,
 }
 
-#[derive(
-	Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Volume {
 	pub name: String,
 	pub size: u64,
 }
 
-#[derive(
-	Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ModifyVolume {
 	pub name: String,
 	pub modifications: Volume,
@@ -140,10 +129,7 @@ impl From<ZfsModifyVolume> for ModifyVolume {
 	fn from(value: ZfsModifyVolume) -> Self {
 		Self {
 			name: value.name,
-			modifications: value
-				.modifications
-				.unwrap_or_default()
-				.into(),
+			modifications: value.modifications.unwrap_or_default().into(),
 		}
 	}
 }
@@ -161,10 +147,7 @@ impl From<ZfsModifyDataset> for ModifyDataset {
 	fn from(value: ZfsModifyDataset) -> Self {
 		Self {
 			name: value.name,
-			modifications: value
-				.modifications
-				.unwrap_or_default()
-				.into(),
+			modifications: value.modifications.unwrap_or_default().into(),
 		}
 	}
 }
@@ -309,22 +292,18 @@ impl Pool {
 			map.insert("quota", format!("{}", quota));
 		}
 
-		if let Err(e) = self.controller.set(&self.name, &info.name, map)
-		{
+		if let Err(e) = self.controller.set(&self.name, &info.name, map) {
 			error!("Setting options on dataset: {}", e.to_string());
 			return Err(e);
 		}
 
-		if info.modifications.name != ""
-			&& info.name != info.modifications.name
-		{
+		if !info.modifications.name.is_empty() && info.name != info.modifications.name {
 			self.controller.unmount(&self.name, &info.name)?;
 
-			if let Err(e) = self.controller.rename(
-				&self.name,
-				&info.name,
-				&info.modifications.name,
-			) {
+			if let Err(e) = self
+				.controller
+				.rename(&self.name, &info.name, &info.modifications.name)
+			{
 				error!("Renaming dataset: {}", e.to_string());
 				return Err(e);
 			}
@@ -338,29 +317,22 @@ impl Pool {
 	pub fn modify_volume(&self, info: ModifyVolume) -> Result<()> {
 		let mut map = HashMap::default();
 		if info.modifications.size != 0 {
-			map.insert(
-				"volsize",
-				format!("{}", info.modifications.size),
-			);
+			map.insert("volsize", format!("{}", info.modifications.size));
 		}
 
-		if let Err(e) = self.controller.set(&self.name, &info.name, map)
-		{
+		if let Err(e) = self.controller.set(&self.name, &info.name, map) {
 			error!("Setting options on volume: {}", e.to_string());
 			return Err(e);
 		}
 
-		if info.modifications.name != ""
+		if !info.modifications.name.is_empty()
 			&& info.name != info.modifications.name
+			&& let Err(e) = self
+				.controller
+				.rename(&self.name, &info.name, &info.modifications.name)
 		{
-			if let Err(e) = self.controller.rename(
-				&self.name,
-				&info.name,
-				&info.modifications.name,
-			) {
-				error!("Renaming volume: {}", e.to_string());
-				return Err(e);
-			}
+			error!("Renaming volume: {}", e.to_string());
+			return Err(e);
 		}
 
 		Ok(())
@@ -386,13 +358,10 @@ impl Pool {
 		};
 
 		for (name, item) in list.datasets {
-			if let Some(filter) = &filter {
-				if !item
-					.name
-					.starts_with(&format!("{}/{}", self.name, filter))
-				{
-					continue;
-				}
+			if let Some(filter) = &filter
+				&& !item.name.starts_with(&format!("{}/{}", self.name, filter))
+			{
+				continue;
 			}
 
 			if !name.starts_with(&self.name) {
@@ -425,18 +394,10 @@ impl Pool {
 				avail: item.properties.available.value,
 				// this is just easier to use in places
 				size: if item.typ == "VOLUME" {
-					match self.controller.get(
-						&self.name,
-						&short_name,
-						"volsize",
-					) {
+					match self.controller.get(&self.name, &short_name, "volsize") {
 						Ok(x) => x,
 						Err(e) => {
-							error!(
-								"Getting volume size for {}: {}",
-								name,
-								e.to_string()
-							);
+							error!("Getting volume size for {}: {}", name, e.to_string());
 							return Err(e);
 						}
 					}
@@ -449,11 +410,7 @@ impl Pool {
 					if quota != 0 {
 						quota
 					} else {
-						self.controller.get(
-							&self.name,
-							&short_name,
-							"available",
-						)?
+						self.controller.get(&self.name, &short_name, "available")?
 					}
 				},
 				refer: item.properties.referenced.value,
@@ -532,8 +489,7 @@ impl Controller {
 		} else {
 			Err(anyhow!(
 				"Error: {}",
-				String::from_utf8(out.stderr.trim_ascii().to_vec())?
-					.as_str()
+				String::from_utf8(out.stderr.trim_ascii().to_vec())?.as_str()
 			))
 		}
 	}
@@ -564,8 +520,7 @@ impl Controller {
 	fn create_dataset(
 		&self, pool: &str, name: &str, options: Option<CommandOptions>,
 	) -> Result<()> {
-		let mut args =
-			vec!["create".to_string(), format!("{}/{}", pool, name)];
+		let mut args = vec!["create".to_string(), format!("{}/{}", pool, name)];
 
 		if let Some(options) = options {
 			args.append(&mut options.to_options())
@@ -576,7 +531,7 @@ impl Controller {
 	}
 
 	fn rename(&self, pool: &str, orig: &str, new: &str) -> Result<()> {
-		let args = vec![
+		let args = [
 			"rename",
 			"-p",
 			&format!("{}/{}", pool, orig),
@@ -590,10 +545,7 @@ impl Controller {
 		Ok(())
 	}
 
-	fn set(
-		&self, pool: &str, name: &str,
-		properties: HashMap<&str, String>,
-	) -> Result<()> {
+	fn set(&self, pool: &str, name: &str, properties: HashMap<&str, String>) -> Result<()> {
 		if properties.is_empty() {
 			return Ok(());
 		}
@@ -610,15 +562,9 @@ impl Controller {
 		Ok(())
 	}
 
-	fn get<T>(
-		&self, pool: &str, name: &str, property: &str,
-	) -> Result<T>
+	fn get<T>(&self, pool: &str, name: &str, property: &str) -> Result<T>
 	where
-		T: for<'de> serde::Deserialize<'de>
-			+ FromStr
-			+ Send
-			+ Sync
-			+ Clone,
+		T: for<'de> serde::Deserialize<'de> + FromStr + Send + Sync + Clone,
 		T::Err: ToString,
 	{
 		let args = vec![
@@ -629,19 +575,19 @@ impl Controller {
 			format!("{}/{}", pool, name),
 		];
 
-		let out: ZFSGet<T> =
-			serde_json::from_str(&Self::run("zfs", args)?)?;
+		let out: ZFSGet<T> = serde_json::from_str(&Self::run("zfs", args)?)?;
 
-		Ok(out.datasets[&format!("{}/{}", pool, name)].properties
-			[property]
-			.value
-			.clone())
+		Ok(
+			out.datasets[&format!("{}/{}", pool, name)].properties[property]
+				.value
+				.clone(),
+		)
 	}
 
 	fn mount(&self, pool: &str) -> Result<()> {
 		Self::run(
 			"zfs",
-			vec!["mount", "-R", pool]
+			["mount", "-R", pool]
 				.iter()
 				.map(|x| x.to_string())
 				.collect::<Vec<String>>(),
@@ -652,7 +598,7 @@ impl Controller {
 	fn unmount(&self, pool: &str, name: &str) -> Result<()> {
 		Self::run(
 			"zfs",
-			vec!["unmount", "-f", &format!("{}/{}", pool, name)]
+			["unmount", "-f", &format!("{}/{}", pool, name)]
 				.iter()
 				.map(|x| x.to_string())
 				.collect::<Vec<String>>(),
@@ -688,21 +634,14 @@ mod tests {
 	mod controller {
 		use super::super::Pool;
 		use crate::{
-			testutil::{
-				BUCKLE_TEST_ZPOOL_PREFIX, create_zpool, destroy_zpool,
-			},
-			zfs::{
-				Dataset, ModifyDataset, ModifyVolume, Volume, ZFSKind,
-			},
+			testutil::{BUCKLE_TEST_ZPOOL_PREFIX, create_zpool, destroy_zpool},
+			zfs::{Dataset, ModifyDataset, ModifyVolume, Volume, ZFSKind},
 		};
 		#[test]
 		fn test_controller_zfs_lifecycle() {
 			let _ = destroy_zpool("controller-list", None);
 			let (_, file) = create_zpool("controller-list").unwrap();
-			let pool = Pool::new(&format!(
-				"{}-controller-list",
-				BUCKLE_TEST_ZPOOL_PREFIX
-			));
+			let pool = Pool::new(&format!("{}-controller-list", BUCKLE_TEST_ZPOOL_PREFIX));
 			let list = pool.list(None).unwrap();
 			assert_eq!(list.len(), 0);
 			pool.create_dataset(&crate::zfs::Dataset {
@@ -716,10 +655,7 @@ mod tests {
 			assert_eq!(list[0].name, "dataset");
 			assert_eq!(
 				list[0].full_name,
-				format!(
-					"{}-controller-list/dataset",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-controller-list/dataset", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(list[0].size, 0);
 			assert_ne!(list[0].used, 0);
@@ -746,10 +682,7 @@ mod tests {
 			assert_eq!(list[0].name, "volume");
 			assert_eq!(
 				list[0].full_name,
-				format!(
-					"{}-controller-list/volume",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-controller-list/volume", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(list[0].size, 0);
 			assert_ne!(list[0].used, 0);
@@ -772,15 +705,11 @@ mod tests {
 			assert_eq!(list[0].name, "volume2");
 			assert_eq!(
 				list[0].full_name,
-				format!(
-					"{}-controller-list/volume2",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-controller-list/volume2", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(list[0].size, 0);
 			assert!(
-				list[0].size < 151 * 1024 * 1024
-					&& list[0].size > 149 * 1024 * 1024,
+				list[0].size < 151 * 1024 * 1024 && list[0].size > 149 * 1024 * 1024,
 				"{}",
 				list[0].size
 			);
@@ -795,10 +724,7 @@ mod tests {
 			assert_eq!(list[0].name, "dataset");
 			assert_eq!(
 				list[0].full_name,
-				format!(
-					"{}-controller-list/dataset",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-controller-list/dataset", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(list[0].size, 0);
 			assert_ne!(list[0].used, 0);
@@ -827,10 +753,7 @@ mod tests {
 			assert_eq!(list[0].name, "dataset2");
 			assert_eq!(
 				list[0].full_name,
-				format!(
-					"{}-controller-list/dataset2",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-controller-list/dataset2", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(list[0].size, 0);
 			assert_ne!(list[0].used, 0);

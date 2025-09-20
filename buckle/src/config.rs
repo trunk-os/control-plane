@@ -70,13 +70,10 @@ impl ZFSConfig {
 
 impl Config {
 	pub fn from_file(filename: std::path::PathBuf) -> Result<Self> {
-		let r =
-			std::fs::OpenOptions::new().read(true).open(filename)?;
+		let r = std::fs::OpenOptions::new().read(true).open(filename)?;
 		let this: Self = serde_yaml_ng::from_reader(r)?;
 		let subscriber = FmtSubscriber::builder()
-			.with_max_level(Into::<tracing::Level>::into(
-				this.log_level.clone(),
-			))
+			.with_max_level(Into::<tracing::Level>::into(this.log_level.clone()))
 			.finish();
 		tracing::subscriber::set_global_default(subscriber)?;
 		info!("Configuration parsed successfully.");
@@ -86,7 +83,6 @@ impl Config {
 
 impl Default for Config {
 	fn default() -> Self {
-		Self::from_file(CONFIG_PATH.into())
-			.expect("while reading config file")
+		Self::from_file(CONFIG_PATH.into()).expect("while reading config file")
 	}
 }

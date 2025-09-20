@@ -1,15 +1,12 @@
 use crate::{
-	Config, InputType, PromptResponses, ProtoPackageInstalled,
-	ProtoPackageTitle, ProtoPackageTitleList, ProtoPrompt,
-	ProtoPromptResponses, ProtoPrompts, ProtoType, ResponseRegistry,
-	SystemdUnit,
+	Config, InputType, PromptResponses, ProtoPackageInstalled, ProtoPackageTitle,
+	ProtoPackageTitleList, ProtoPrompt, ProtoPromptResponses, ProtoPrompts, ProtoType,
+	ResponseRegistry, SystemdUnit,
 	control_server::{Control, ControlServer},
 	query_server::{Query, QueryServer},
 	status_server::{Status, StatusServer},
 };
-use std::{
-	fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf,
-};
+use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf};
 use tonic::{Result, body::Body, transport::Server as TransportServer};
 use tonic_middleware::{Middleware, MiddlewareLayer, ServiceBound};
 use tracing::{error, info};
@@ -29,16 +26,11 @@ impl Server {
 
 	pub fn start(
 		&self,
-	) -> anyhow::Result<
-		impl std::future::Future<
-			Output = Result<(), tonic::transport::Error>,
-		>,
-	> {
+	) -> anyhow::Result<impl std::future::Future<Output = Result<(), tonic::transport::Error>>> {
 		info!("Starting service.");
 
-		if let Some(parent) = self.config.socket.to_path_buf().parent()
-		{
-			std::fs::create_dir_all(&parent)?;
+		if let Some(parent) = self.config.socket.to_path_buf().parent() {
+			std::fs::create_dir_all(parent)?;
 		}
 
 		if std::fs::exists(&self.config.socket)? {
@@ -46,13 +38,9 @@ impl Server {
 		}
 
 		let uds = tokio::net::UnixListener::bind(&self.config.socket)?;
-		let uds_stream =
-			tokio_stream::wrappers::UnixListenerStream::new(uds);
+		let uds_stream = tokio_stream::wrappers::UnixListenerStream::new(uds);
 
-		std::fs::set_permissions(
-			&self.config.socket,
-			Permissions::from_mode(0o600),
-		)?;
+		std::fs::set_permissions(&self.config.socket, Permissions::from_mode(0o600))?;
 
 		Ok(TransportServer::builder()
 			.layer(MiddlewareLayer::new(LogMiddleware))
@@ -65,9 +53,7 @@ impl Server {
 
 #[tonic::async_trait]
 impl Status for Server {
-	async fn ping(
-		&self, _: tonic::Request<()>,
-	) -> Result<tonic::Response<()>> {
+	async fn ping(&self, _: tonic::Request<()>) -> Result<tonic::Response<()>> {
 		Ok(tonic::Response::new(()))
 	}
 }
@@ -82,25 +68,16 @@ impl Control for Server {
 
 		let pkg = r
 			.load(&title.name, &title.version)
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 			.compile()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		Ok(tonic::Response::new(ProtoPackageInstalled {
 			proto_install_state: Some(
 				pkg.installed()
 					.await
-					.map_err(|e| {
-						tonic::Status::new(
-							tonic::Code::Internal,
-							e.to_string(),
-						)
-					})?
+					.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 					.into(),
 			),
 		}))
@@ -114,33 +91,26 @@ impl Control for Server {
 
 		let pkg = r
 			.load(&title.name, &title.version)
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 			.compile()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		pkg.provision(&self.config.buckle_socket).await.map_err(
-			|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			},
-		)?;
+		pkg.provision(&self.config.buckle_socket)
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		pkg.install().await.map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		pkg.install()
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		Ok(tonic::Response::new(
-			self.write_unit(tonic::Request::new(ProtoPackageTitle {
-				name: title.name,
-				version: title.version,
-			}))
-			.await?
-			.into_inner(),
-		))
+		self.write_unit(tonic::Request::new(ProtoPackageTitle {
+			name: title.name,
+			version: title.version,
+		}))
+		.await?;
+
+		Ok(tonic::Response::new(()))
 	}
 
 	async fn uninstall(
@@ -151,30 +121,22 @@ impl Control for Server {
 
 		let pkg = r
 			.load(&title.name, &title.version)
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 			.compile()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		pkg.uninstall().await.map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		pkg.uninstall()
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		pkg.deprovision(&self.config.buckle_socket).await.map_err(
-			|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			},
-		)?;
+		pkg.deprovision(&self.config.buckle_socket)
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		Ok(tonic::Response::new(
-			self.remove_unit(tonic::Request::new(title))
-				.await?
-				.into_inner(),
-		))
+		self.remove_unit(tonic::Request::new(title)).await?;
+
+		Ok(tonic::Response::new(()))
 	}
 
 	async fn write_unit(
@@ -185,28 +147,19 @@ impl Control for Server {
 
 		let pkg = r
 			.load(&title.name, &title.version)
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 			.compile()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
 		);
-		unit.create_unit(
-			&self.config.registry.path,
-			&PathBuf::from("/tmp/volroot"),
-		)
-		.await
-		.map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		unit.create_unit(&self.config.registry.path, &PathBuf::from("/tmp/volroot"))
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		info!("Wrote unit to {}", unit.filename().display());
 
@@ -221,23 +174,19 @@ impl Control for Server {
 
 		let pkg = r
 			.load(&title.name, &title.version)
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 			.compile()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
 		);
-		unit.remove_unit().await.map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		unit.remove_unit()
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		info!("Removed unit {}", unit.filename().display());
 
@@ -252,9 +201,9 @@ impl Query for Server {
 	) -> Result<tonic::Response<ProtoPackageTitleList>> {
 		let r = self.config.registry();
 
-		let list = r.installed().map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		let list = r
+			.installed()
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let mut v = Vec::new();
 
@@ -273,9 +222,9 @@ impl Query for Server {
 	) -> Result<tonic::Response<ProtoPackageTitleList>> {
 		let r = self.config.registry();
 
-		let list = r.list().map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		let list = r
+			.list()
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let mut v = Vec::new();
 
@@ -292,12 +241,11 @@ impl Query for Server {
 	async fn get_responses(
 		&self, title: tonic::Request<ProtoPackageTitle>,
 	) -> Result<tonic::Response<ProtoPromptResponses>> {
-		let r =
-			ResponseRegistry::new(self.config.registry.path.clone());
+		let r = ResponseRegistry::new(self.config.registry.path.clone());
 		let title = title.into_inner();
-		let responses = r.get(&title.name).map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		let responses = r
+			.get(&title.name)
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let mut out = ProtoPromptResponses {
 			name: title.name,
@@ -316,9 +264,9 @@ impl Query for Server {
 	) -> Result<tonic::Response<ProtoPrompts>> {
 		let r = self.config.registry();
 		let title = title.into_inner();
-		let pkg = r.load(&title.name, &title.version).map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})?;
+		let pkg = r
+			.load(&title.name, &title.version)
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		let prompts = pkg.prompts.unwrap_or_default();
 
 		let mut out = ProtoPrompts::default();
@@ -331,9 +279,7 @@ impl Query for Server {
 				input_type: match prompt.input_type {
 					InputType::String => ProtoType::String,
 					InputType::Integer => ProtoType::Integer,
-					InputType::SignedInteger => {
-						ProtoType::SignedInteger
-					}
+					InputType::SignedInteger => ProtoType::SignedInteger,
 					InputType::Boolean => ProtoType::Boolean,
 				}
 				.into(),
@@ -356,9 +302,7 @@ impl Query for Server {
 
 		r.response_registry()
 			.set(&responses.name, &PromptResponses(pr))
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		info!("Wrote responses for package {}", responses.name);
 
 		Ok(tonic::Response::new(()))
@@ -384,11 +328,7 @@ where
 		match service.call(req).await {
 			Ok(x) => Ok(x),
 			Err(e) => {
-				error!(
-					"Error during request to {}: {}",
-					uri.path(),
-					e.to_string()
-				);
+				error!("Error during request to {}: {}", uri.path(), e.to_string());
 				Err(e)
 			}
 		}

@@ -6,9 +6,7 @@ fn string_vec(v: Vec<&str>) -> Vec<String> {
 	v.iter().map(ToString::to_string).collect::<Vec<String>>()
 }
 
-async fn load(
-	registry: &Registry, name: &str, version: &str,
-) -> Result<CompiledPackage> {
+async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
 	registry.load(name, version)?.compile().await
 }
 
@@ -25,11 +23,7 @@ mod livetests {
 		let tf = NamedTempFile::new().unwrap();
 		let path = tf.path();
 
-		download_vm_image(
-			"file://testdata/ubuntu.img",
-			path.to_path_buf(),
-		)
-		.unwrap();
+		download_vm_image("file://testdata/ubuntu.img", path.to_path_buf()).unwrap();
 		let md = path.metadata().unwrap();
 		// it should be as big as a machine image, this is
 		// lower than the size of the current image in the makefile
@@ -37,10 +31,10 @@ mod livetests {
 
 		// just a file over http. this should be small and accessible.
 		download_vm_image(
-            "https://raw.githubusercontent.com/curl/curl/refs/heads/master/lib/file.c",
-            path.to_path_buf(),
-        )
-        .unwrap();
+			"https://raw.githubusercontent.com/curl/curl/refs/heads/master/lib/file.c",
+			path.to_path_buf(),
+		)
+		.unwrap();
 		let md = path.metadata().unwrap();
 		// this check ensures we downloaded something new to the same path, truncating it, by
 		// making sure it's small.
@@ -66,16 +60,12 @@ mod livetests {
 			.unwrap();
 
 		assert!(child.id() != 0);
-		assert!(unsafe {
-			libc::kill(child.id() as i32, libc::SIGINT) == 0
-		});
+		assert!(unsafe { libc::kill(child.id() as i32, libc::SIGINT) == 0 });
 		let status = child.wait().unwrap();
 		assert!(status.signal().unwrap() as i32 == libc::SIGINT);
 
-		let pkg =
-			load(&registry, "podman-test", "0.0.3").await.unwrap();
-		let args =
-			generate_command(pkg.clone(), path.to_path_buf()).unwrap();
+		let pkg = load(&registry, "podman-test", "0.0.3").await.unwrap();
+		let args = generate_command(pkg.clone(), path.to_path_buf()).unwrap();
 
 		let _ = stop_package(pkg.clone(), path.to_path_buf());
 
@@ -91,21 +81,13 @@ mod livetests {
 		let start = std::time::Instant::now();
 
 		let mut found = false;
-		'check: while std::time::Instant::now() - start
-			< std::time::Duration::from_secs(60)
-		{
-			match tokio::net::TcpStream::connect("127.0.0.1:8000").await
-			{
+		'check: while std::time::Instant::now() - start < std::time::Duration::from_secs(60) {
+			match tokio::net::TcpStream::connect("127.0.0.1:8000").await {
 				Ok(_) => {
 					found = true;
 					break 'check;
 				}
-				Err(_) => {
-					tokio::time::sleep(std::time::Duration::from_secs(
-						1,
-					))
-					.await
-				}
+				Err(_) => tokio::time::sleep(std::time::Duration::from_secs(1)).await,
 			}
 		}
 

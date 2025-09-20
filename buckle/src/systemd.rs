@@ -8,9 +8,8 @@ use zbus_systemd::{
 };
 
 use crate::grpc::{
-	GrpcLogDirection, GrpcLogMessage, GrpcUnit, GrpcUnitStatus,
-	UnitEnabledState, UnitLastRunState, UnitLoadState,
-	UnitRuntimeState,
+	GrpcLogDirection, GrpcLogMessage, GrpcUnit, GrpcUnitStatus, UnitEnabledState, UnitLastRunState,
+	UnitLoadState, UnitRuntimeState,
 };
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
@@ -27,9 +26,7 @@ impl From<GrpcLogMessage> for LogMessage {
 		Self {
 			message: value.msg,
 			time: SystemTime::UNIX_EPOCH
-				+ std::time::Duration::from_secs(
-					value.time.unwrap_or_default().seconds as u64,
-				),
+				+ std::time::Duration::from_secs(value.time.unwrap_or_default().seconds as u64),
 			service_name: value.service_name,
 			pid: value.pid,
 			cursor: value.cursor,
@@ -37,9 +34,7 @@ impl From<GrpcLogMessage> for LogMessage {
 	}
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum LastRunState {
 	#[default]
 	Failed,
@@ -55,20 +50,17 @@ pub enum LastRunState {
 
 impl std::fmt::Display for LastRunState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(
-			match self {
-				Self::Failed => "failed",
-				Self::Active => "active",
-				Self::Dead => "dead",
-				Self::Mounted => "mounted",
-				Self::Running => "running",
-				Self::Listening => "listening",
-				Self::Plugged => "plugged",
-				Self::Exited => "exited",
-				Self::Waiting => "waiting",
-			}
-			.into(),
-		)
+		f.write_str(match self {
+			Self::Failed => "failed",
+			Self::Active => "active",
+			Self::Dead => "dead",
+			Self::Mounted => "mounted",
+			Self::Running => "running",
+			Self::Listening => "listening",
+			Self::Plugged => "plugged",
+			Self::Exited => "exited",
+			Self::Waiting => "waiting",
+		})
 	}
 }
 
@@ -84,18 +76,14 @@ impl std::str::FromStr for LastRunState {
 			"listening" => Self::Listening,
 			"plugged" => Self::Plugged,
 			"exited" => Self::Exited,
-			"active" | "auto-restart" | "auto-restart-queued" => {
-				Self::Active
-			}
+			"active" | "auto-restart" | "auto-restart-queued" => Self::Active,
 			"waiting" => Self::Waiting,
 			s => return Err(anyhow!("invalid last run state '{}'", s)),
 		})
 	}
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum LoadState {
 	Loaded,
 	#[default]
@@ -105,14 +93,11 @@ pub enum LoadState {
 
 impl std::fmt::Display for LoadState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(
-			match self {
-				Self::Loaded => "loaded",
-				Self::Unloaded => "not-found",
-				Self::Inactive => "inactive",
-			}
-			.into(),
-		)
+		f.write_str(match self {
+			Self::Loaded => "loaded",
+			Self::Unloaded => "not-found",
+			Self::Inactive => "inactive",
+		})
 	}
 }
 
@@ -121,9 +106,7 @@ impl std::str::FromStr for LoadState {
 
 	fn from_str(s: &str) -> Result<Self> {
 		Ok(match s {
-			"loaded" | "auto-restart" | "auto-restart-queued" => {
-				Self::Loaded
-			}
+			"loaded" | "auto-restart" | "auto-restart-queued" => Self::Loaded,
 			"not-found" => Self::Unloaded,
 			"inactive" => Self::Inactive,
 			s => return Err(anyhow!("invalid load state '{}'", s)),
@@ -131,9 +114,7 @@ impl std::str::FromStr for LoadState {
 	}
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum RuntimeState {
 	#[default]
 	Started,
@@ -144,15 +125,12 @@ pub enum RuntimeState {
 
 impl std::fmt::Display for RuntimeState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(
-			match self {
-				Self::Started => "started",
-				Self::Stopped => "stopped",
-				Self::Restarted => "restarted",
-				Self::Reloaded => "reloaded",
-			}
-			.into(),
-		)
+		f.write_str(match self {
+			Self::Started => "started",
+			Self::Stopped => "stopped",
+			Self::Restarted => "restarted",
+			Self::Reloaded => "reloaded",
+		})
 	}
 }
 
@@ -161,10 +139,10 @@ impl std::str::FromStr for RuntimeState {
 
 	fn from_str(s: &str) -> Result<Self> {
 		Ok(match s {
-			"started" | "running" | "mounted" | "listening"
-			| "plugged" | "active" | "activating" => Self::Started,
-			"stopped" | "inactive" | "dead" | "failed" | "exited"
-			| "waiting" | "deactivating" | "maintenance" => Self::Stopped,
+			"started" | "running" | "mounted" | "listening" | "plugged" | "active"
+			| "activating" => Self::Started,
+			"stopped" | "inactive" | "dead" | "failed" | "exited" | "waiting" | "deactivating"
+			| "maintenance" => Self::Stopped,
 			"restarted" => Self::Restarted,
 			"reloaded" => Self::Reloaded,
 			s => return Err(anyhow!("invalid runtime state '{}'", s)),
@@ -172,9 +150,7 @@ impl std::str::FromStr for RuntimeState {
 	}
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub enum EnabledState {
 	#[default]
 	Enabled,
@@ -184,14 +160,11 @@ pub enum EnabledState {
 
 impl std::fmt::Display for EnabledState {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		f.write_str(
-			match self {
-				Self::Enabled => "enabled",
-				Self::Disabled => "disabled",
-				Self::Failed => "failed",
-			}
-			.into(),
-		)
+		f.write_str(match self {
+			Self::Enabled => "enabled",
+			Self::Disabled => "disabled",
+			Self::Failed => "failed",
+		})
 	}
 }
 
@@ -232,10 +205,7 @@ impl From<Unit> for GrpcUnit {
 		Self {
 			name: value.name.clone(),
 			description: value.description.clone(),
-			enabled_state: Into::<UnitEnabledState>::into(
-				value.enabled_state,
-			)
-			.into(),
+			enabled_state: Into::<UnitEnabledState>::into(value.enabled_state).into(),
 			object_path: value.object_path.clone(),
 			status: Some(value.status.into()),
 		}
@@ -245,16 +215,9 @@ impl From<Unit> for GrpcUnit {
 impl From<Status> for GrpcUnitStatus {
 	fn from(value: Status) -> Self {
 		Self {
-			load_state: Into::<UnitLoadState>::into(value.load_state)
-				.into(),
-			runtime_state: Into::<UnitRuntimeState>::into(
-				value.runtime_state,
-			)
-			.into(),
-			last_run_state: Into::<UnitLastRunState>::into(
-				value.last_run_state,
-			)
-			.into(),
+			load_state: Into::<UnitLoadState>::into(value.load_state).into(),
+			runtime_state: Into::<UnitRuntimeState>::into(value.runtime_state).into(),
+			last_run_state: Into::<UnitLastRunState>::into(value.last_run_state).into(),
 		}
 	}
 }
@@ -363,9 +326,7 @@ impl From<LastRunState> for UnitLastRunState {
 	}
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct Unit {
 	pub name: String,
 	pub description: String,
@@ -374,9 +335,7 @@ pub struct Unit {
 	pub status: Status,
 }
 
-#[derive(
-	Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default,
-)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct Status {
 	pub load_state: LoadState,
 	pub runtime_state: RuntimeState,
@@ -389,17 +348,7 @@ pub struct Systemd {
 	manager: ManagerProxy<'static>,
 }
 
-#[derive(
-	Debug,
-	Clone,
-	Eq,
-	PartialEq,
-	Ord,
-	PartialOrd,
-	Default,
-	Serialize,
-	Deserialize,
-)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Default, Serialize, Deserialize)]
 pub enum LogDirection {
 	#[default]
 	Forward,
@@ -489,18 +438,16 @@ impl Systemd {
 		Ok(self.manager.load_unit(name).await?.to_string())
 	}
 
-	pub async fn list(
-		&self, filter: Option<String>,
-	) -> Result<Vec<Unit>> {
+	pub async fn list(&self, filter: Option<String>) -> Result<Vec<Unit>> {
 		let list = self.manager.list_units().await?;
 		let mut v = Vec::new();
 		for item in list {
 			let name = item.0;
 
-			if let Some(filter) = &filter {
-				if !name.contains(filter) {
-					continue;
-				}
+			if let Some(filter) = &filter
+				&& !name.contains(filter)
+			{
+				continue;
 			}
 
 			let description = item.1;
@@ -529,11 +476,8 @@ impl Systemd {
 	}
 
 	pub async fn log(
-		&self, name: &str, count: usize, cursor: Option<String>,
-		direction: Option<LogDirection>,
-	) -> Result<
-		tokio::sync::mpsc::UnboundedReceiver<BTreeMap<String, String>>,
-	> {
+		&self, name: &str, count: usize, cursor: Option<String>, direction: Option<LogDirection>,
+	) -> Result<tokio::sync::mpsc::UnboundedReceiver<BTreeMap<String, String>>> {
 		let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
 
 		let name = name.to_string();
@@ -556,8 +500,10 @@ impl Systemd {
 			// the previous 100 lines". I think it's better this way because it's consistently
 			// weird.
 
-			if cursor.is_some() && !cursor.clone().unwrap().is_empty() {
-				journal.seek_cursor(cursor.unwrap()).unwrap();
+			if let Some(cursor) = cursor
+				&& !cursor.is_empty()
+			{
+				journal.seek_cursor(cursor).unwrap();
 			} else {
 				journal.seek_tail().unwrap();
 
@@ -577,26 +523,17 @@ impl Systemd {
 			match direction.unwrap_or_default() {
 				LogDirection::Forward => {
 					// FIXME: the struct should really be constructed here, not in the service handler
-					while let Ok(Some(mut entry)) = journal.next_entry()
-					{
+					while let Ok(Some(mut entry)) = journal.next_entry() {
 						// Add the cursor so it can be pulled out later
-						entry.insert(
-							"CURSOR".into(),
-							journal.cursor().unwrap(),
-						);
+						entry.insert("CURSOR".into(), journal.cursor().unwrap());
 						tx.send(entry).unwrap()
 					}
 				}
 				LogDirection::Backward => {
 					// FIXME: the struct should really be constructed here, not in the service handler
-					while let Ok(Some(mut entry)) =
-						journal.previous_entry()
-					{
+					while let Ok(Some(mut entry)) = journal.previous_entry() {
 						// Add the cursor so it can be pulled out later
-						entry.insert(
-							"CURSOR".into(),
-							journal.cursor().unwrap(),
-						);
+						entry.insert("CURSOR".into(), journal.cursor().unwrap());
 						tx.send(entry).unwrap()
 					}
 				}
@@ -625,10 +562,7 @@ mod tests {
 		assert!(op.is_some(), "did not find item in systemd to check");
 		let op = op.unwrap();
 
-		assert_eq!(
-			systemd.get_unit("init.scope".into()).await.unwrap(),
-			op
-		);
+		assert_eq!(systemd.get_unit("init.scope".into()).await.unwrap(), op);
 
 		let status = systemd.status(op).await.unwrap();
 		assert_eq!(status.runtime_state, RuntimeState::Started);
@@ -642,10 +576,7 @@ mod tests {
 		let mut found = false;
 		for item in list {
 			if item.name == "init.scope" {
-				assert_eq!(
-					item.status.last_run_state,
-					LastRunState::Running
-				);
+				assert_eq!(item.status.last_run_state, LastRunState::Running);
 				found = true;
 			}
 		}

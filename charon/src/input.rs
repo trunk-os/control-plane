@@ -81,8 +81,7 @@ where
 	T::Err: Send + Sync + std::error::Error + 'static,
 {
 	pub fn output(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<T, anyhow::Error>
 	where
 		T: Serialize,
@@ -129,9 +128,7 @@ where
 {
 	type Value = TemplatedInput<T>;
 
-	fn expecting(
-		&self, formatter: &mut std::fmt::Formatter,
-	) -> std::fmt::Result {
+	fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
 		let need = match std::any::type_name::<T>() {
 			"std::str" | "std::str::String" => "string",
 			"std::u64" | "std::u16" => "unsigned integer",
@@ -139,10 +136,7 @@ where
 			"std::bool" => "boolean",
 			_ => "unknown type",
 		};
-		formatter.write_str(&format!(
-			"expecting a string that parses as {}",
-			need
-		))
+		formatter.write_str(&format!("expecting a string that parses as {}", need))
 	}
 
 	fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

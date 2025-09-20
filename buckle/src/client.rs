@@ -1,11 +1,9 @@
 use crate::{
 	grpc::{
-		GrpcLogDirection, GrpcLogMessage, GrpcLogParams,
-		GrpcUnitSettings, PingResult, UnitEnabledState, UnitListFilter,
-		UnitRuntimeState, ZfsListFilter, ZfsName,
+		GrpcLogDirection, GrpcLogMessage, GrpcLogParams, GrpcUnitSettings, PingResult,
+		UnitEnabledState, UnitListFilter, UnitRuntimeState, ZfsListFilter, ZfsName,
 		status_client::StatusClient as GRPCStatusClient,
-		systemd_client::SystemdClient as GRPCSystemdClient,
-		zfs_client::ZfsClient as GRPCZfsClient,
+		systemd_client::SystemdClient as GRPCSystemdClient, zfs_client::ZfsClient as GRPCZfsClient,
 	},
 	systemd::{LogDirection, Unit, UnitSettings},
 };
@@ -42,29 +40,20 @@ impl Client {
 	}
 
 	pub async fn status(&self) -> anyhow::Result<StatusClient> {
-		let client = GRPCStatusClient::connect(format!(
-			"unix://{}",
-			self.socket.to_str().unwrap()
-		))
-		.await?;
+		let client =
+			GRPCStatusClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
 		Ok(StatusClient { client })
 	}
 
 	pub async fn zfs(&self) -> anyhow::Result<ZFSClient> {
-		let client = GRPCZfsClient::connect(format!(
-			"unix://{}",
-			self.socket.to_str().unwrap()
-		))
-		.await?;
+		let client =
+			GRPCZfsClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
 		Ok(ZFSClient { client })
 	}
 
 	pub async fn systemd(&self) -> anyhow::Result<SystemdClient> {
-		let client = GRPCSystemdClient::connect(format!(
-			"unix://{}",
-			self.socket.to_str().unwrap()
-		))
-		.await?;
+		let client =
+			GRPCSystemdClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
 		Ok(SystemdClient { client })
 	}
 }
@@ -75,15 +64,12 @@ impl SystemdClient {
 		Ok(())
 	}
 
-	pub async fn list(
-		&mut self, filter: Option<String>,
-	) -> Result<Vec<Unit>> {
+	pub async fn list(&mut self, filter: Option<String>) -> Result<Vec<Unit>> {
 		let filter = UnitListFilter {
 			filter: filter.unwrap_or_default(),
 		};
 
-		let units =
-			self.client.list(Request::new(filter)).await?.into_inner();
+		let units = self.client.list(Request::new(filter)).await?.into_inner();
 		let mut v = Vec::new();
 		for unit in units.items {
 			v.push(unit.into())
@@ -95,14 +81,8 @@ impl SystemdClient {
 	pub async fn set_unit(&mut self, unit: UnitSettings) -> Result<()> {
 		let out = GrpcUnitSettings {
 			name: unit.name,
-			enabled_state: Into::<UnitEnabledState>::into(
-				unit.enabled_state,
-			)
-			.into(),
-			runtime_state: Into::<UnitRuntimeState>::into(
-				unit.runtime_state,
-			)
-			.into(),
+			enabled_state: Into::<UnitEnabledState>::into(unit.enabled_state).into(),
+			runtime_state: Into::<UnitRuntimeState>::into(unit.runtime_state).into(),
 		};
 		self.client.set_unit(Request::new(out)).await?;
 		Ok(())
@@ -118,10 +98,7 @@ impl SystemdClient {
 				name: name.to_string(),
 				count: count as u64,
 				cursor: cursor.unwrap_or_default(),
-				direction: Into::<GrpcLogDirection>::into(
-					direction.unwrap_or_default(),
-				)
-				.into(),
+				direction: Into::<GrpcLogDirection>::into(direction.unwrap_or_default()).into(),
 			})
 			.await?
 			.into_inner();
@@ -137,52 +114,41 @@ impl StatusClient {
 
 impl ZFSClient {
 	pub async fn root_path(&mut self) -> Result<String> {
-		Ok(self
-			.client
+		self.client
 			.root_path(Request::new(()))
 			.await
-			.map(|x| x.into_inner().root)?)
+			.map(|x| x.into_inner().root)
 	}
 
-	pub async fn create_dataset(
-		&mut self, dataset: Dataset,
-	) -> Result<()> {
+	pub async fn create_dataset(&mut self, dataset: Dataset) -> Result<()> {
 		self.client
 			.create_dataset(Request::new(dataset.into()))
 			.await?;
 		Ok(())
 	}
 
-	pub async fn create_volume(
-		&mut self, volume: Volume,
-	) -> Result<()> {
+	pub async fn create_volume(&mut self, volume: Volume) -> Result<()> {
 		self.client
 			.create_volume(Request::new(volume.into()))
 			.await?;
 		Ok(())
 	}
 
-	pub async fn modify_dataset(
-		&mut self, dataset: ModifyDataset,
-	) -> Result<()> {
+	pub async fn modify_dataset(&mut self, dataset: ModifyDataset) -> Result<()> {
 		self.client
 			.modify_dataset(Request::new(dataset.into()))
 			.await?;
 		Ok(())
 	}
 
-	pub async fn modify_volume(
-		&mut self, volume: ModifyVolume,
-	) -> Result<()> {
+	pub async fn modify_volume(&mut self, volume: ModifyVolume) -> Result<()> {
 		self.client
 			.modify_volume(Request::new(volume.into()))
 			.await?;
 		Ok(())
 	}
 
-	pub async fn list(
-		&mut self, filter: Option<String>,
-	) -> Result<Vec<ZFSStat>> {
+	pub async fn list(&mut self, filter: Option<String>) -> Result<Vec<ZFSStat>> {
 		Ok(self
 			.client
 			.list(Request::new(ZfsListFilter { filter }))

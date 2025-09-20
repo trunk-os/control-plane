@@ -31,6 +31,8 @@ pub struct AuditLog {
 	pub error: Option<String>,
 }
 
+// FIXME: I hate this lint but I guess it should be fixed eventually
+#[allow(clippy::wrong_self_convention)]
 impl AuditLog {
 	pub fn builder() -> Self {
 		Self::default()
@@ -41,22 +43,14 @@ impl AuditLog {
 		self
 	}
 
-	pub fn from_headers(
-		&mut self, headers: HeaderMap<HeaderValue>,
-	) -> &mut Self {
+	pub fn from_headers(&mut self, headers: HeaderMap<HeaderValue>) -> &mut Self {
 		self.ip = headers
 			.get("X-Real-IP")
 			.map(|e| e.to_str().unwrap())
 			.unwrap_or_else(|| {
 				headers
 					.get("X-Forwarded-For")
-					.map(|e| {
-						e.to_str()
-							.unwrap()
-							.split("; ")
-							.next()
-							.unwrap_or_default()
-					})
+					.map(|e| e.to_str().unwrap().split("; ").next().unwrap_or_default())
 					.unwrap_or_else(|| "")
 			})
 			.to_string();
@@ -86,15 +80,13 @@ impl AuditLog {
 		Ok(self)
 	}
 
-	pub async fn complete(
-		&mut self, db: &super::super::DB,
-	) -> Result<()> {
+	pub async fn complete(&mut self, db: &super::super::DB) -> Result<()> {
 		let mut this = self.clone();
 		this.time = chrono::Local::now();
 		let mut state = DbState::new_uncreated(this);
-		Ok(state
+		state
 			.save(db.handle())
 			.await
-			.map_err(|e| anyhow!(e.to_string()))?)
+			.map_err(|e| anyhow!(e.to_string()))
 	}
 }

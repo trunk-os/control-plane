@@ -34,9 +34,7 @@ impl ResponseRegistry {
 		)?)
 	}
 
-	pub fn set(
-		&self, name: &str, responses: &PromptResponses,
-	) -> Result<()> {
+	pub fn set(&self, name: &str, responses: &PromptResponses) -> Result<()> {
 		let pb = self.root.join(RESPONSES_SUBPATH);
 
 		std::fs::create_dir_all(&pb)?;
@@ -57,9 +55,7 @@ impl ResponseRegistry {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PromptResponses(pub Vec<PromptResponse>);
 
 impl From<Vec<PromptResponse>> for PromptResponses {
@@ -105,9 +101,7 @@ impl PromptParser {
 		Ok(v)
 	}
 
-	pub fn template(
-		&self, s: String, responses: &PromptResponses,
-	) -> Result<String> {
+	pub fn template(&self, s: String, responses: &PromptResponses) -> Result<String> {
 		let mut tmp = String::new();
 		let mut inside = false;
 		let mut out = String::new();
@@ -131,10 +125,7 @@ impl PromptParser {
 				}
 
 				if !matched {
-					return Err(anyhow!(
-						"No response matches prompt '{}'",
-						tmp
-					));
+					return Err(anyhow!("No response matches prompt '{}'", tmp));
 				}
 
 				tmp = String::new();
@@ -163,9 +154,7 @@ pub struct Prompt {
 	pub input_type: InputType,
 }
 
-#[derive(
-	Debug, Clone, Eq, Default, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Eq, Default, PartialEq, Serialize, Deserialize)]
 pub struct PromptCollection(pub Vec<Prompt>);
 
 impl PromptCollection {
@@ -208,15 +197,9 @@ impl From<ProtoPromptResponse> for PromptResponse {
 		Self {
 			template: value.template.clone(),
 			input: match value.input_type() {
-				ProtoType::Integer => {
-					Input::Integer(value.response.parse().unwrap())
-				}
-				ProtoType::SignedInteger => Input::SignedInteger(
-					value.response.parse().unwrap(),
-				),
-				ProtoType::Boolean => {
-					Input::Boolean(value.response.parse().unwrap())
-				}
+				ProtoType::Integer => Input::Integer(value.response.parse().unwrap()),
+				ProtoType::SignedInteger => Input::SignedInteger(value.response.parse().unwrap()),
+				ProtoType::Boolean => Input::Boolean(value.response.parse().unwrap()),
 				ProtoType::String => Input::String(value.response),
 			},
 		}
@@ -227,17 +210,14 @@ impl From<ProtoPromptResponse> for PromptResponse {
 mod tests {
 	use crate::PromptResponse;
 
-	use super::{
-		Input, InputType, Prompt, PromptCollection, PromptParser,
-	};
+	use super::{Input, InputType, Prompt, PromptCollection, PromptParser};
 	use lazy_static::lazy_static;
 
 	lazy_static! {
 		static ref PROMPTS: Vec<Prompt> = [
 			Prompt {
 				template: "greeting".into(),
-				question: "how do we greet each other in computers?"
-					.into(),
+				question: "how do we greet each other in computers?".into(),
 				input_type: InputType::String,
 			},
 			Prompt {
@@ -247,8 +227,7 @@ mod tests {
 			},
 			Prompt {
 				template: "file".into(),
-				question: "Give me the name of your favorite file"
-					.into(),
+				question: "Give me the name of your favorite file".into(),
 				input_type: InputType::String,
 			},
 		]
@@ -295,15 +274,11 @@ mod tests {
 					&(vec![
 						PromptResponse {
 							template: "greeting".into(),
-							input: Input::String(
-								"hello, world!".into()
-							)
+							input: Input::String("hello, world!".into())
 						},
 						PromptResponse {
 							template: "not-greeting".into(),
-							input: Input::String(
-								"hello, world!".into()
-							)
+							input: Input::String("hello, world!".into())
 						},
 					]
 					.into()),
@@ -332,9 +307,7 @@ mod tests {
 					&(vec![
 						PromptResponse {
 							template: "greeting".into(),
-							input: Input::String(
-								"hello, world!".into()
-							)
+							input: Input::String("hello, world!".into())
 						},
 						PromptResponse {
 							template: "shoesize".into(),
@@ -358,16 +331,12 @@ mod tests {
 				.unwrap(),
 			"?greeting"
 		);
-		assert!(
-			parser.template("?".into(), &Default::default()).is_ok()
-		);
+		assert!(parser.template("?".into(), &Default::default()).is_ok());
 		assert_eq!(
 			parser.template("?".into(), &Default::default()).unwrap(),
 			"?"
 		);
-		assert!(
-			parser.template("??".into(), &Default::default()).is_ok()
-		);
+		assert!(parser.template("??".into(), &Default::default()).is_ok());
 		assert_eq!(
 			parser.template("??".into(), &Default::default()).unwrap(),
 			"?"
@@ -380,10 +349,7 @@ mod tests {
 		);
 		assert_eq!(
 			parser
-				.template(
-					"why so serious??".into(),
-					&Default::default()
-				)
+				.template("why so serious??".into(), &Default::default())
 				.unwrap(),
 			"why so serious?"
 		);
@@ -415,23 +381,17 @@ mod tests {
 
 		// items should appear in order
 		assert_eq!(
-            *parser
-                .prompts("here are three items: ?file? and ?shoesize? and ?greeting? woo".into())
-                .unwrap(),
-            vec![PROMPTS[2].clone(), PROMPTS[1].clone(), PROMPTS[0].clone()]
-        );
+			*parser
+				.prompts("here are three items: ?file? and ?shoesize? and ?greeting? woo".into())
+				.unwrap(),
+			vec![PROMPTS[2].clone(), PROMPTS[1].clone(), PROMPTS[0].clone()]
+		);
 
 		assert_eq!(*parser.prompts("??".into()).unwrap(), vec![]);
 		assert_eq!(*parser.prompts("?".into()).unwrap(), vec![]);
 		assert_eq!(*parser.prompts("?test".into()).unwrap(), vec![]);
-		assert_eq!(
-			*parser.prompts("?file ?shoesize".into()).unwrap(),
-			vec![]
-		);
-		assert_eq!(
-			*parser.prompts("why so serious?".into()).unwrap(),
-			vec![]
-		);
+		assert_eq!(*parser.prompts("?file ?shoesize".into()).unwrap(), vec![]);
+		assert_eq!(*parser.prompts("why so serious?".into()).unwrap(), vec![]);
 	}
 
 	#[test]

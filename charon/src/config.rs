@@ -6,8 +6,7 @@ use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
 const GIT_PATH: &str = "git"; // FIXME: for now. This should be absolute or configurable, at least.
-const GIT_DEFAULT_REPOSITORY: &str =
-	"https://github.com/trunk-os/charon-packages";
+const GIT_DEFAULT_REPOSITORY: &str = "https://github.com/trunk-os/charon-packages";
 const REGISTRY_DEFAULT_PATH: &str = "/trunk/charon/registry";
 
 pub const DEFAULT_CHARON_BIN_PATH: &str = "/usr/bin/charon";
@@ -89,8 +88,7 @@ pub struct Config {
 
 impl Config {
 	pub fn from_file(filename: PathBuf) -> Result<Self> {
-		let f =
-			std::fs::OpenOptions::new().read(true).open(&filename)?;
+		let f = std::fs::OpenOptions::new().read(true).open(&filename)?;
 		let this: Self = serde_yaml_ng::from_reader(&f)?;
 		let subscriber = FmtSubscriber::builder()
 			.with_max_level(Into::<tracing::Level>::into(
@@ -120,26 +118,11 @@ impl Config {
 			// exists. here, we want to store any files we have laying around so the rebase doesn't
 			// fail. this is admittedly pretty dodgy but I don't have a better solution right now.
 			if std::fs::exists(&self.registry.path)? {
-				self.run_command(vec![
-					GIT_PATH.into(),
-					"add".into(),
-					".".into(),
-				])?;
-				self.run_command(vec![
-					GIT_PATH.into(),
-					"stash".into(),
-				])?;
-				self.run_command(vec![
-					GIT_PATH.into(),
-					"pull".into(),
-					"--rebase".into(),
-				])?;
+				self.run_command(vec![GIT_PATH.into(), "add".into(), ".".into()])?;
+				self.run_command(vec![GIT_PATH.into(), "stash".into()])?;
+				self.run_command(vec![GIT_PATH.into(), "pull".into(), "--rebase".into()])?;
 				// FIXME this sucks
-				let _ = self.run_command(vec![
-					GIT_PATH.into(),
-					"stash".into(),
-					"apply".into(),
-				]);
+				let _ = self.run_command(vec![GIT_PATH.into(), "stash".into(), "apply".into()]);
 			} else {
 				std::fs::create_dir_all(&self.registry.path)?;
 				// first time, clone it

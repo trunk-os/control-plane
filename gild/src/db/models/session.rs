@@ -39,9 +39,7 @@ impl Session {
 		DbState::new_uncreated(Self {
 			user_id: user.id,
 			expires: chrono::Local::now()
-				.checked_add_signed(chrono::TimeDelta::days(
-					DEFAULT_EXPIRATION,
-				))
+				.checked_add_signed(chrono::TimeDelta::days(DEFAULT_EXPIRATION))
 				.unwrap(),
 			..Default::default()
 		})
@@ -50,17 +48,15 @@ impl Session {
 	pub async fn prune(db: &DB) -> Result<()> {
 		Self::all()
 			.where_col(|c| {
-				c.expires.lt(chrono::Local::now()
-					- chrono::Duration::days(DEFAULT_EXPIRATION))
+				c.expires
+					.lt(chrono::Local::now() - chrono::Duration::days(DEFAULT_EXPIRATION))
 			})
 			.delete(db.handle())
 			.await?;
 		Ok(())
 	}
 
-	pub(crate) async fn from_jwt(
-		db: &DB, claims: JWTClaims,
-	) -> Result<DbState<Self>> {
+	pub(crate) async fn from_jwt(db: &DB, claims: JWTClaims) -> Result<DbState<Self>> {
 		let session_id: u32 = claims[JWT_SESSION_ID_KEY].parse()?;
 		let list = Self::all()
 			.where_col(|c| c.id.equal(session_id))
@@ -71,11 +67,8 @@ impl Session {
 			None => return Err(anyhow!("invalid session")),
 		};
 
-		let expires: chrono::DateTime<chrono::Local> =
-			claims[JWT_EXPIRATION_TIME].parse()?;
-		if session.expires.signed_duration_since(expires).num_seconds()
-			< 0
-		{
+		let expires: chrono::DateTime<chrono::Local> = claims[JWT_EXPIRATION_TIME].parse()?;
+		if session.expires.signed_duration_since(expires).num_seconds() < 0 {
 			return Err(anyhow!("session is expired"));
 		}
 		Ok(DbState::db_loaded(session.clone()))
@@ -84,10 +77,7 @@ impl Session {
 	pub(crate) fn to_jwt(&self) -> JWTClaims {
 		let mut claims = JWTClaims::default();
 		claims.insert(JWT_SESSION_ID_KEY.into(), self.id.to_string());
-		claims.insert(
-			JWT_EXPIRATION_TIME.into(),
-			self.expires.to_rfc3339(),
-		);
+		claims.insert(JWT_EXPIRATION_TIME.into(), self.expires.to_rfc3339());
 		claims
 	}
 }

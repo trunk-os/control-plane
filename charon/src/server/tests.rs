@@ -1,7 +1,6 @@
 use crate::{
-	Client, Config, Input, InputType, PackageTitle, Prompt,
-	PromptCollection, PromptResponse, PromptResponses, RegistryConfig,
-	Server,
+	Client, Config, Input, InputType, PackageTitle, Prompt, PromptCollection, PromptResponse,
+	PromptResponses, RegistryConfig, Server,
 };
 use std::path::PathBuf;
 use tempfile::{NamedTempFile, tempdir};
@@ -15,18 +14,15 @@ async fn start_server(
 	let pb2 = pb.clone();
 
 	let buckle_info = if let Some(pool) = pool {
-		let (zpool, file) =
-			buckle::testutil::create_zpool(&pool).unwrap();
+		let (zpool, file) = buckle::testutil::create_zpool(&pool).unwrap();
 
-		let buckle_socket = buckle::testutil::make_server(Some(
-			buckle::config::Config {
-				socket: "".into(), // ovewrites socket on create, not sure why
-				zfs: buckle::config::ZFSConfig {
-					pool: zpool.clone(),
-				},
-				log_level: buckle::config::LogLevel::Debug,
+		let buckle_socket = buckle::testutil::make_server(Some(buckle::config::Config {
+			socket: "".into(), // ovewrites socket on create, not sure why
+			zfs: buckle::config::ZFSConfig {
+				pool: zpool.clone(),
 			},
-		))
+			log_level: buckle::config::LogLevel::Debug,
+		}))
 		.await
 		.unwrap();
 		Some((buckle_socket, zpool, file))
@@ -57,9 +53,7 @@ async fn start_server(
 			},
 			systemd_root: inner,
 			charon_path: Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
-			buckle_socket: bi
-				.map(|x| x.0)
-				.unwrap_or("/tmp/buckled.sock".into()),
+			buckle_socket: bi.map(|x| x.0).unwrap_or("/tmp/buckled.sock".into()),
 		})
 		.start()
 		.unwrap()
@@ -74,9 +68,7 @@ async fn start_server(
 
 #[tokio::test]
 async fn test_ping() {
-	let client =
-		Client::new(start_server(true, None).await.0.to_path_buf())
-			.unwrap();
+	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
 	client.status().await.unwrap().ping().await.unwrap();
 }
 
@@ -108,10 +100,7 @@ async fn test_write_unit_real() {
 
 	let systemd_path = systemd_path.unwrap();
 
-	let content = std::fs::read_to_string(
-		systemd_path.join("podman-test-0.0.2.service"),
-	)
-	.unwrap();
+	let content = std::fs::read_to_string(systemd_path.join("podman-test-0.0.2.service")).unwrap();
 	assert_eq!(
 		content,
 		format!(
@@ -141,25 +130,16 @@ Alias=podman-test-0.0.2.service
 			.is_ok()
 	);
 
-	assert!(
-		!std::fs::exists(
-			systemd_path.join("podman-test-0.0.2.service")
-		)
-		.unwrap()
-	);
+	assert!(!std::fs::exists(systemd_path.join("podman-test-0.0.2.service")).unwrap());
 	if let Some(buckle_info) = buckle_info {
-		let _ = buckle::testutil::destroy_zpool(
-			"write-unit-real",
-			Some(&buckle_info.2),
-		);
+		let _ = buckle::testutil::destroy_zpool("write-unit-real", Some(&buckle_info.2));
 	}
 }
 
 #[tokio::test]
 async fn test_write_unit() {
 	// debug mode
-	let (socket, _, buckle_info) =
-		start_server(true, Some("write-unit".into())).await;
+	let (socket, _, buckle_info) = start_server(true, Some("write-unit".into())).await;
 
 	let client = Client::new(socket).unwrap();
 
@@ -172,18 +152,13 @@ async fn test_write_unit() {
 		.unwrap();
 
 	if let Some(buckle_info) = buckle_info {
-		let _ = buckle::testutil::destroy_zpool(
-			"write-unit",
-			Some(&buckle_info.2),
-		);
+		let _ = buckle::testutil::destroy_zpool("write-unit", Some(&buckle_info.2));
 	}
 }
 
 #[tokio::test]
 async fn test_get_prompts() {
-	let client =
-		Client::new(start_server(true, None).await.0.to_path_buf())
-			.unwrap();
+	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
 	let prompts = client
 		.query()
 		.await
@@ -217,9 +192,7 @@ async fn test_get_prompts() {
 		},
 		Prompt {
 			template: "private_recreate".into(),
-			question:
-				"Should we recreate this volume if it already exists?"
-					.into(),
+			question: "Should we recreate this volume if it already exists?".into(),
 			input_type: InputType::Boolean,
 		},
 	]);
@@ -244,9 +217,7 @@ async fn set_get_responses() {
 		},
 	]);
 
-	let client =
-		Client::new(start_server(true, None).await.0.to_path_buf())
-			.unwrap();
+	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
 	client
 		.query()
 		.await
@@ -292,9 +263,7 @@ async fn list() {
 		}
 	}
 
-	let client =
-		Client::new(start_server(true, None).await.0.to_path_buf())
-			.unwrap();
+	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
 
 	let list = client.query().await.unwrap().list().await.unwrap();
 	assert_eq!(list, v)

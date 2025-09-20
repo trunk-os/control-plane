@@ -26,33 +26,21 @@ enum DownloadInfo {
 	Close,
 }
 
-pub fn generate_command(
-	package: CompiledPackage, volume_root: PathBuf,
-) -> Result<Vec<String>> {
+pub fn generate_command(package: CompiledPackage, volume_root: PathBuf) -> Result<Vec<String>> {
 	match package.source {
-		CompiledSource::URL(_) => {
-			generate_vm_command(&package, &volume_root)
-		}
-		CompiledSource::Container(_) => {
-			generate_container_command(&package, &volume_root)
-		}
+		CompiledSource::URL(_) => generate_vm_command(&package, &volume_root),
+		CompiledSource::Container(_) => generate_container_command(&package, &volume_root),
 	}
 }
 
-pub fn stop_package(
-	package: CompiledPackage, volume_root: PathBuf,
-) -> Result<()> {
+pub fn stop_package(package: CompiledPackage, volume_root: PathBuf) -> Result<()> {
 	match package.source {
 		CompiledSource::URL(_) => vm_shutdown(&package, &volume_root),
-		CompiledSource::Container(_) => {
-			container_shutdown(&package, &volume_root)
-		}
+		CompiledSource::Container(_) => container_shutdown(&package, &volume_root),
 	}
 }
 
-pub fn container_shutdown(
-	package: &CompiledPackage, _: &Path,
-) -> Result<()> {
+pub fn container_shutdown(package: &CompiledPackage, _: &Path) -> Result<()> {
 	std::process::Command::new(PODMAN_COMMAND)
 		.args(vec!["rm", "-f", &package.title.to_string()])
 		.stdout(Stdio::null())
@@ -85,13 +73,12 @@ pub fn download_vm_image(u: &str, target: PathBuf) -> Result<()> {
 
 		while let Ok(item) = r.recv() {
 			match item {
-				DownloadInfo::Data(data) => match f.write_all(&data) {
-					Err(e) => {
+				DownloadInfo::Data(data) => {
+					if let Err(e) = f.write_all(&data) {
 						close_s.send(Err(anyhow!(e))).unwrap();
 						return;
 					}
-					_ => {}
-				},
+				}
 				DownloadInfo::ContentType(_) => {}
 				DownloadInfo::Close => {
 					close_s.send(Ok(())).unwrap();
@@ -106,9 +93,11 @@ pub fn download_vm_image(u: &str, target: PathBuf) -> Result<()> {
 	if parsed.scheme() == "file" {
 		// apparently the url library thinks the first path component of file:// is the host.
 		// sigh.
-		let mut f = std::fs::OpenOptions::new().read(true).open(
-			&format!("{}{}", parsed.host().unwrap(), parsed.path()),
-		)?;
+		let mut f = std::fs::OpenOptions::new().read(true).open(format!(
+			"{}{}",
+			parsed.host().unwrap(),
+			parsed.path()
+		))?;
 		let mut buf: [u8; 4096] = [0u8; 4096];
 		loop {
 			let size = f.read(&mut buf)?;
@@ -119,19 +108,15 @@ pub fn download_vm_image(u: &str, target: PathBuf) -> Result<()> {
 		}
 	} else {
 		let mut curl = Easy::new();
-		curl.url(&u)?;
+		curl.url(u)?;
 
 		let s2 = s.clone();
 		curl.header_function(move |header| {
 			if let Ok(header) = String::from_utf8(header.into()) {
 				let split: Vec<&str> = header.splitn(2, ":").collect();
-				if split.len() == 2 {
-					if split[0].to_lowercase() == "content-type" {
-						s2.send(DownloadInfo::ContentType(
-							split[1].trim().to_string(),
-						))
+				if split.len() == 2 && split[0].to_lowercase() == "content-type" {
+					s2.send(DownloadInfo::ContentType(split[1].trim().to_string()))
 						.unwrap();
-					}
 				}
 			}
 
@@ -152,60 +137,40 @@ pub fn download_vm_image(u: &str, target: PathBuf) -> Result<()> {
 	Ok(())
 }
 
-fn vm_client(
-	package: &CompiledPackage, volume_root: &Path,
-) -> Result<Client> {
+fn vm_client(package: &CompiledPackage, volume_root: &Path) -> Result<Client> {
 	match Client::new(volume_root.join(QEMU_MONITOR_FILENAME)) {
 		Ok(mut us) => {
 			us.handshake()?;
 			us.send_command::<GenericReturn>("qmp_capabilities", None)?;
 			Ok(us)
 		}
-		Err(_) => Err(anyhow!(
-			"{} is not running or not monitored",
-			package.title
-		)),
+		Err(_) => Err(anyhow!("{} is not running or not monitored", package.title)),
 	}
 }
 
-pub fn vm_ping(
-	package: &CompiledPackage, volume_root: &Path,
-) -> Result<()> {
+pub fn vm_ping(package: &CompiledPackage, volume_root: &Path) -> Result<()> {
 	vm_client(package, volume_root)?;
 	Ok(())
 }
 
-pub fn vm_shutdown(
-	package: &CompiledPackage, volume_root: &Path,
-) -> Result<()> {
-	vm_client(package, volume_root)?
-		.send_command("system_powerdown", None)
+pub fn vm_shutdown(package: &CompiledPackage, volume_root: &Path) -> Result<()> {
+	vm_client(package, volume_root)?.send_command("system_powerdown", None)
 }
 
-pub fn vm_quit(
-	package: &CompiledPackage, volume_root: &Path,
-) -> Result<()> {
+pub fn vm_quit(package: &CompiledPackage, volume_root: &Path) -> Result<()> {
 	vm_client(package, volume_root)?.send_command("quit", None)
 }
 
-pub fn generate_vm_command(
-	package: &CompiledPackage, volume_root: &Path,
-) -> Result<Vec<String>> {
+pub fn generate_vm_command(package: &CompiledPackage, volume_root: &Path) -> Result<Vec<String>> {
 	let mut cmd = vec![QEMU_COMMAND.to_string()];
 
 	let mut fwdrules = String::new();
 	for (host, guest) in &package.networking.forward_ports {
-		fwdrules.push_str(&format!(
-			",hostfwd=tcp:0.0.0.0:{}-:{}",
-			host, guest
-		));
+		fwdrules.push_str(&format!(",hostfwd=tcp:0.0.0.0:{}-:{}", host, guest));
 	}
 
 	for (host, guest) in &package.networking.expose_ports {
-		fwdrules.push_str(&format!(
-			",hostfwd=tcp:0.0.0.0:{}-:{}",
-			host, guest
-		));
+		fwdrules.push_str(&format!(",hostfwd=tcp:0.0.0.0:{}-:{}", host, guest));
 	}
 
 	cmd.append(&mut vec![
@@ -228,9 +193,7 @@ pub fn generate_vm_command(
 		"-smp".into(),
 		format!(
 			"cpus={},cores={},maxcpus={}",
-			package.resources.cpus,
-			package.resources.cpus,
-			package.resources.cpus
+			package.resources.cpus, package.resources.cpus, package.resources.cpus
 		),
 		"-nic".into(),
 		format!("user{}", fwdrules),
@@ -280,12 +243,8 @@ pub fn generate_container_command(
 	}
 
 	// FIXME: solve creating this network in advance
-	if let Some(internal_network) = &package.networking.internal_network
-	{
-		cmd.append(&mut vec![
-			"--network".into(),
-			internal_network.clone(),
-		]);
+	if let Some(internal_network) = &package.networking.internal_network {
+		cmd.append(&mut vec!["--network".into(), internal_network.clone()]);
 	}
 
 	for (hostport, localport) in &package.networking.forward_ports {
@@ -320,13 +279,10 @@ pub fn generate_container_command(
 		}
 	}
 
-	let name = if let CompiledSource::Container(name) = &package.source
-	{
+	let name = if let CompiledSource::Container(name) = &package.source {
 		name
 	} else {
-		return Err(anyhow!(
-			"Genuinely curious how you got here, not gonna lie"
-		));
+		return Err(anyhow!("Genuinely curious how you got here, not gonna lie"));
 	};
 
 	if package.system.host_pid {
@@ -334,9 +290,7 @@ pub fn generate_container_command(
 	}
 
 	// FIXME: check for this conflict in validate
-	if package.system.host_net
-		&& package.networking.internal_network.is_none()
-	{
+	if package.system.host_net && package.networking.internal_network.is_none() {
 		cmd.append(&mut vec!["--network".into(), "host".into()]);
 	}
 

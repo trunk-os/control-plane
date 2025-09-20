@@ -1,8 +1,8 @@
 use crate::{
 	grpc::{
-		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitSettings,
-		PingResult, UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter,
-		ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
+		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitSettings, PingResult, UnitListFilter,
+		ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsRoot,
+		ZfsVolume,
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
@@ -11,9 +11,7 @@ use crate::{
 };
 use std::{fs::Permissions, os::unix::fs::PermissionsExt, pin::Pin};
 use tokio_stream::{Stream, wrappers::ReceiverStream};
-use tonic::{
-	Request, Response, Result, transport::Server as TransportServer,
-};
+use tonic::{Request, Response, Result, transport::Server as TransportServer};
 use tonic_middleware::MiddlewareLayer;
 use tracing::info;
 
@@ -24,9 +22,7 @@ pub struct Server {
 }
 
 impl Server {
-	pub fn new_with_config(
-		config: Option<crate::config::Config>,
-	) -> Self {
+	pub fn new_with_config(config: Option<crate::config::Config>) -> Self {
 		match config {
 			Some(config) => Self { config },
 			None => Self::default(),
@@ -35,16 +31,11 @@ impl Server {
 
 	pub fn start(
 		&self,
-	) -> anyhow::Result<
-		impl std::future::Future<
-			Output = Result<(), tonic::transport::Error>,
-		>,
-	> {
+	) -> anyhow::Result<impl std::future::Future<Output = Result<(), tonic::transport::Error>>> {
 		info!("Starting service.");
 
-		if let Some(parent) = self.config.socket.to_path_buf().parent()
-		{
-			std::fs::create_dir_all(&parent)?;
+		if let Some(parent) = self.config.socket.to_path_buf().parent() {
+			std::fs::create_dir_all(parent)?;
 		}
 
 		if std::fs::exists(&self.config.socket)? {
@@ -52,18 +43,12 @@ impl Server {
 		}
 
 		let uds = tokio::net::UnixListener::bind(&self.config.socket)?;
-		let uds_stream =
-			tokio_stream::wrappers::UnixListenerStream::new(uds);
+		let uds_stream = tokio_stream::wrappers::UnixListenerStream::new(uds);
 
-		std::fs::set_permissions(
-			&self.config.socket,
-			Permissions::from_mode(0o600),
-		)?;
+		std::fs::set_permissions(&self.config.socket, Permissions::from_mode(0o600))?;
 
 		Ok(TransportServer::builder()
-			.layer(MiddlewareLayer::new(
-				crate::middleware::LogMiddleware,
-			))
+			.layer(MiddlewareLayer::new(crate::middleware::LogMiddleware))
 			.add_service(StatusServer::new(self.clone()))
 			.add_service(ZfsServer::new(self.clone()))
 			.add_service(SystemdServer::new(self.clone()))
@@ -73,37 +58,21 @@ impl Server {
 
 #[tonic::async_trait]
 impl Systemd for Server {
-	async fn reload(
-		&self, _: tonic::Request<()>,
-	) -> Result<Response<()>> {
+	async fn reload(&self, _: tonic::Request<()>) -> Result<Response<()>> {
 		Ok(Response::new(
 			crate::systemd::Systemd::new_system()
 				.await
-				.map_err(|e| {
-					tonic::Status::new(
-						tonic::Code::Internal,
-						e.to_string(),
-					)
-				})?
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
 				.reload()
 				.await
-				.map_err(|e| {
-					tonic::Status::new(
-						tonic::Code::Internal,
-						e.to_string(),
-					)
-				})?,
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
 		))
 	}
 
-	async fn list(
-		&self, filter: Request<UnitListFilter>,
-	) -> Result<Response<GrpcUnitList>> {
+	async fn list(&self, filter: Request<UnitListFilter>) -> Result<Response<GrpcUnitList>> {
 		let systemd = crate::systemd::Systemd::new_system()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		let mut v = Vec::new();
 		let filter = filter.into_inner();
 
@@ -112,21 +81,20 @@ impl Systemd for Server {
 			out = Some(filter.filter);
 		}
 
-		for item in systemd.list(out).await.map_err(|e| {
-			tonic::Status::new(tonic::Code::Internal, e.to_string())
-		})? {
+		for item in systemd
+			.list(out)
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
+		{
 			v.push(item.into());
 		}
 
 		Ok(Response::new(GrpcUnitList { items: v }))
 	}
 
-	type UnitLogStream =
-		Pin<Box<dyn Stream<Item = Result<GrpcLogMessage>> + Send>>;
+	type UnitLogStream = Pin<Box<dyn Stream<Item = Result<GrpcLogMessage>> + Send>>;
 
-	async fn set_unit(
-		&self, _filter: Request<GrpcUnitSettings>,
-	) -> Result<Response<()>> {
+	async fn set_unit(&self, _filter: Request<GrpcUnitSettings>) -> Result<Response<()>> {
 		Ok(Response::new(()))
 	}
 
@@ -136,14 +104,11 @@ impl Systemd for Server {
 		&self, params: Request<GrpcLogParams>,
 	) -> Result<Response<Self::UnitLogStream>> {
 		let params = params.into_inner();
-		let (tx, rx) =
-			tokio::sync::mpsc::channel(params.count as usize);
+		let (tx, rx) = tokio::sync::mpsc::channel(params.count as usize);
 		let output_stream = ReceiverStream::new(rx);
 		let systemd = crate::systemd::Systemd::new_system()
 			.await
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let p2 = params.clone();
 		tokio::spawn(async move {
@@ -163,9 +128,7 @@ impl Systemd for Server {
 						"_SOURCE_REALTIME_TIMESTAMP" => {
 							time = Some(
 								std::time::SystemTime::UNIX_EPOCH
-									+ std::time::Duration::from_secs(
-										value.parse::<u64>().unwrap(),
-									),
+									+ std::time::Duration::from_secs(value.parse::<u64>().unwrap()),
 							)
 						}
 						"MESSAGE" => msg = Some(value),
@@ -174,8 +137,7 @@ impl Systemd for Server {
 						_ => {}
 					}
 
-					if time.is_some() && msg.is_some() && pid.is_some()
-					{
+					if time.is_some() && msg.is_some() && pid.is_some() {
 						tx.send(Ok(GrpcLogMessage {
 							service_name: params.name.clone(),
 							msg: msg.clone().unwrap(),
@@ -194,19 +156,13 @@ impl Systemd for Server {
 			}
 		});
 
-		Ok(
-			Response::new(
-				Box::pin(output_stream) as Self::UnitLogStream
-			),
-		)
+		Ok(Response::new(Box::pin(output_stream) as Self::UnitLogStream))
 	}
 }
 
 #[tonic::async_trait]
 impl Status for Server {
-	async fn ping(
-		&self, _: Request<()>,
-	) -> Result<Response<PingResult>> {
+	async fn ping(&self, _: Request<()>) -> Result<Response<PingResult>> {
 		Ok(Response::new(PingResult {
 			info: Some(Info::default().into()),
 		}))
@@ -215,91 +171,65 @@ impl Status for Server {
 
 #[tonic::async_trait]
 impl Zfs for Server {
-	async fn root_path(
-		&self, _: Request<()>,
-	) -> Result<Response<ZfsRoot>> {
+	async fn root_path(&self, _: Request<()>) -> Result<Response<ZfsRoot>> {
 		Ok(Response::new(ZfsRoot {
 			root: format!("/{}", self.config.zfs.pool),
 		}))
 	}
 
-	async fn modify_dataset(
-		&self, info: Request<ZfsModifyDataset>,
-	) -> Result<Response<()>> {
+	async fn modify_dataset(&self, info: Request<ZfsModifyDataset>) -> Result<Response<()>> {
 		self.config
 			.zfs
 			.controller()
 			.modify_dataset(info.into_inner().into())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		Ok(Response::new(()))
 	}
 
-	async fn modify_volume(
-		&self, info: Request<ZfsModifyVolume>,
-	) -> Result<Response<()>> {
+	async fn modify_volume(&self, info: Request<ZfsModifyVolume>) -> Result<Response<()>> {
 		self.config
 			.zfs
 			.controller()
 			.modify_volume(info.into_inner().into())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		Ok(Response::new(()))
 	}
 
-	async fn list(
-		&self, filter: Request<ZfsListFilter>,
-	) -> Result<Response<ZfsList>> {
+	async fn list(&self, filter: Request<ZfsListFilter>) -> Result<Response<ZfsList>> {
 		let list = self
 			.config
 			.zfs
 			.controller()
 			.list(filter.get_ref().filter.clone())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		return Ok(Response::new(list.into()));
 	}
 
-	async fn create_dataset(
-		&self, dataset: Request<ZfsDataset>,
-	) -> Result<Response<()>> {
+	async fn create_dataset(&self, dataset: Request<ZfsDataset>) -> Result<Response<()>> {
 		self.config
 			.zfs
 			.controller()
 			.create_dataset(&dataset.into_inner().into())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		return Ok(Response::new(()));
 	}
 
-	async fn create_volume(
-		&self, volume: Request<ZfsVolume>,
-	) -> Result<Response<()>> {
+	async fn create_volume(&self, volume: Request<ZfsVolume>) -> Result<Response<()>> {
 		self.config
 			.zfs
 			.controller()
 			.create_volume(&volume.into_inner().into())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		return Ok(Response::new(()));
 	}
 
-	async fn destroy(
-		&self, name: Request<ZfsName>,
-	) -> Result<Response<()>> {
+	async fn destroy(&self, name: Request<ZfsName>) -> Result<Response<()>> {
 		self.config
 			.zfs
 			.controller()
 			.destroy(name.get_ref().name.clone())
-			.map_err(|e| {
-				tonic::Status::new(tonic::Code::Internal, e.to_string())
-			})?;
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 		return Ok(Response::new(()));
 	}
 }
@@ -316,10 +246,9 @@ mod tests {
 
 		#[tokio::test]
 		async fn test_log() {
-			let mut client =
-				get_systemd_client(make_server(None).await.unwrap())
-					.await
-					.unwrap();
+			let mut client = get_systemd_client(make_server(None).await.unwrap())
+				.await
+				.unwrap();
 			let log = client
 				.unit_log(GrpcLogParams {
 					name: "network.target".into(),
@@ -353,10 +282,9 @@ mod tests {
 
 		#[tokio::test]
 		async fn test_ping() {
-			let mut client =
-				get_status_client(make_server(None).await.unwrap())
-					.await
-					.unwrap();
+			let mut client = get_status_client(make_server(None).await.unwrap())
+				.await
+				.unwrap();
 			let results = client
 				.ping(tonic::Request::new(()))
 				.await
@@ -379,12 +307,11 @@ mod tests {
 	mod zfs {
 		use crate::{
 			grpc::{
-				ZfsDataset, ZfsListFilter, ZfsModifyDataset,
-				ZfsModifyVolume, ZfsName, ZfsType, ZfsVolume,
+				ZfsDataset, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsType,
+				ZfsVolume,
 			},
 			testutil::{
-				BUCKLE_TEST_ZPOOL_PREFIX, create_zpool, destroy_zpool,
-				get_zfs_client, make_server,
+				BUCKLE_TEST_ZPOOL_PREFIX, create_zpool, destroy_zpool, get_zfs_client, make_server,
 			},
 		};
 
@@ -392,10 +319,9 @@ mod tests {
 		async fn test_zfs_operations() {
 			let _ = destroy_zpool("default", None);
 			let (_, file) = create_zpool("default").unwrap();
-			let mut client =
-				get_zfs_client(make_server(None).await.unwrap())
-					.await
-					.unwrap();
+			let mut client = get_zfs_client(make_server(None).await.unwrap())
+				.await
+				.unwrap();
 
 			let res = client
 				.list(tonic::Request::new(ZfsListFilter::default()))
@@ -438,10 +364,7 @@ mod tests {
 			assert_ne!(item.avail, 0);
 			assert_eq!(
 				item.mountpoint,
-				Some(format!(
-					"/{}-default/dataset",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				))
+				Some(format!("/{}-default/dataset", BUCKLE_TEST_ZPOOL_PREFIX))
 			);
 
 			client
@@ -489,10 +412,7 @@ mod tests {
 			assert_ne!(item.avail, 0);
 			assert_eq!(
 				item.mountpoint,
-				Some(format!(
-					"/{}-default/dataset",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				))
+				Some(format!("/{}-default/dataset", BUCKLE_TEST_ZPOOL_PREFIX))
 			);
 
 			client
@@ -523,10 +443,7 @@ mod tests {
 			assert_eq!(item.name, "dataset2");
 			assert_eq!(
 				item.full_name,
-				format!(
-					"{}-default/dataset2",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				),
+				format!("{}-default/dataset2", BUCKLE_TEST_ZPOOL_PREFIX),
 			);
 			assert_ne!(item.size, 0);
 			assert_ne!(item.used, 0);
@@ -534,10 +451,7 @@ mod tests {
 			assert_ne!(item.avail, 0);
 			assert_eq!(
 				item.mountpoint,
-				Some(format!(
-					"/{}-default/dataset2",
-					BUCKLE_TEST_ZPOOL_PREFIX
-				))
+				Some(format!("/{}-default/dataset2", BUCKLE_TEST_ZPOOL_PREFIX))
 			);
 
 			let res = client
@@ -597,8 +511,7 @@ mod tests {
 			);
 			assert_ne!(item.size, 0);
 			assert!(
-				item.size < 6 * 1024 * 1024
-					&& item.size > 4 * 1024 * 1024,
+				item.size < 6 * 1024 * 1024 && item.size > 4 * 1024 * 1024,
 				"{}",
 				item.size
 			);

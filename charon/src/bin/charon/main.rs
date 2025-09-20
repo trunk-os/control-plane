@@ -1,7 +1,7 @@
 use anyhow::Result;
 use charon::{
-	Client, Global, GlobalRegistry, PackageTitle, Registry,
-	SourcePackage, SystemdUnit, generate_command, stop_package,
+	Client, Global, GlobalRegistry, PackageTitle, Registry, SourcePackage, SystemdUnit,
+	generate_command, stop_package,
 };
 use clap::{Parser, Subcommand};
 use fancy_duration::AsFancyDuration;
@@ -12,18 +12,10 @@ const DEFAULT_SOCKET_PATH: &str = "/tmp/charond.sock";
 #[derive(Parser, Debug, Clone)]
 #[command(version, about="CLI to the Charon Packaging System", long_about=None)]
 struct MainArgs {
-	#[arg(
-		short = 'r',
-		long = "registry",
-		help = "Root path to package registry"
-	)]
+	#[arg(short = 'r', long = "registry", help = "Root path to package registry")]
 	registry_path: Option<PathBuf>,
 
-	#[arg(
-		short = 'b',
-		long = "buckle",
-		help = "Path to buckle socket"
-	)]
+	#[arg(short = 'b', long = "buckle", help = "Path to buckle socket")]
 	buckle_socket: Option<PathBuf>,
 
 	#[command(subcommand)]
@@ -43,11 +35,7 @@ enum Commands {
 #[derive(Parser, Debug, Clone)]
 #[command(about="Remote Control charond through GRPC socket", long_about=None)]
 struct RemoteArgs {
-	#[arg(
-		short = 's',
-		long = "socket",
-		help = "Path to control socket"
-	)]
+	#[arg(short = 's', long = "socket", help = "Path to control socket")]
 	socket: Option<PathBuf>,
 	#[command(subcommand)]
 	command: RemoteCommands,
@@ -109,9 +97,7 @@ async fn main() -> Result<()> {
 	let cwd = std::env::current_dir()?;
 	match args.command {
 		Commands::NewPackage(new_args) => {
-			let r = Registry::new(
-				args.registry_path.clone().unwrap_or(cwd.clone()),
-			);
+			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			let sp = SourcePackage {
 				title: PackageTitle {
 					name: new_args.name.clone(),
@@ -121,8 +107,7 @@ async fn main() -> Result<()> {
 				..Default::default()
 			};
 			r.write(&sp)?;
-			let gr =
-				GlobalRegistry::new(args.registry_path.unwrap_or(cwd));
+			let gr = GlobalRegistry::new(args.registry_path.unwrap_or(cwd));
 			let g = Global {
 				name: new_args.name,
 				..Default::default()
@@ -130,18 +115,13 @@ async fn main() -> Result<()> {
 			gr.set(&g)?;
 		}
 		Commands::RemovePackage(rp_args) => {
-			let r = Registry::new(
-				args.registry_path.clone().unwrap_or(cwd.clone()),
-			);
-			let gr =
-				GlobalRegistry::new(args.registry_path.unwrap_or(cwd));
+			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
+			let gr = GlobalRegistry::new(args.registry_path.unwrap_or(cwd));
 			r.remove(&rp_args.name)?;
 			gr.remove(&rp_args.name)?;
 		}
 		Commands::Launch(l_args) => {
-			let r = Registry::new(
-				args.registry_path.clone().unwrap_or(cwd.clone()),
-			);
+			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			let command = generate_command(
 				r.load(&l_args.package_name, &l_args.package_version)?
 					.compile()
@@ -155,9 +135,7 @@ async fn main() -> Result<()> {
 			std::process::exit(status.code().unwrap_or(1));
 		}
 		Commands::Stop(s_args) => {
-			let r = Registry::new(
-				args.registry_path.clone().unwrap_or(cwd.clone()),
-			);
+			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			stop_package(
 				r.load(&s_args.package_name, &s_args.package_version)?
 					.compile()
@@ -166,16 +144,11 @@ async fn main() -> Result<()> {
 			)?;
 		}
 		Commands::CreateUnit(cu_args) => {
-			let r = Registry::new(
-				args.registry_path.clone().unwrap_or(cwd.clone()),
-			);
+			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			let systemd = SystemdUnit::new(
-				r.load(
-					&cu_args.package_name,
-					&cu_args.package_version,
-				)?
-				.compile()
-				.await?,
+				r.load(&cu_args.package_name, &cu_args.package_version)?
+					.compile()
+					.await?,
 				cu_args.systemd_root,
 				std::env::current_exe().ok(),
 			);
@@ -193,9 +166,7 @@ async fn main() -> Result<()> {
 			);
 		}
 		Commands::Remote(r_args) => {
-			let socket = r_args
-				.socket
-				.unwrap_or_else(|| DEFAULT_SOCKET_PATH.into());
+			let socket = r_args.socket.unwrap_or_else(|| DEFAULT_SOCKET_PATH.into());
 
 			let client = Client::new(socket)?;
 			match r_args.command {
@@ -204,18 +175,14 @@ async fn main() -> Result<()> {
 					client.status().await?.ping().await?;
 					eprintln!(
 						"Ping successful! Took {}",
-						(std::time::Instant::now() - start)
-							.fancy_duration(),
+						(std::time::Instant::now() - start).fancy_duration(),
 					);
 				}
 				RemoteCommands::WriteUnit(wu_args) => {
 					client
 						.control()
 						.await?
-						.write_unit(
-							&wu_args.package_name,
-							&wu_args.package_version,
-						)
+						.write_unit(&wu_args.package_name, &wu_args.package_version)
 						.await?;
 					eprintln!(
 						"Wrote unit for {}-{}",

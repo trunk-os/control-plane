@@ -1,7 +1,7 @@
 use crate::{CompiledPackage, DEFAULT_CHARON_BIN_PATH};
 use anyhow::{Result, anyhow};
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub const SYSTEMD_SERVICE_ROOT: &str = "/etc/systemd/system";
 
@@ -28,8 +28,7 @@ pub struct SystemdUnit {
 
 impl SystemdUnit {
 	pub fn new(
-		package: CompiledPackage, systemd_root: Option<PathBuf>,
-		charon_path: Option<PathBuf>,
+		package: CompiledPackage, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
 	) -> Self {
 		Self {
 			package,
@@ -39,7 +38,7 @@ impl SystemdUnit {
 	}
 
 	pub fn service_name(&self) -> String {
-		format!("{}.service", self.package.title).into()
+		format!("{}.service", self.package.title)
 	}
 
 	pub fn filename(&self) -> PathBuf {
@@ -54,9 +53,7 @@ impl SystemdUnit {
 		.into()
 	}
 
-	pub async fn unit(
-		&self, registry_path: &PathBuf, volume_root: &PathBuf,
-	) -> Result<String> {
+	pub async fn unit(&self, registry_path: &Path, volume_root: &Path) -> Result<String> {
 		let mut out = String::new();
 		let mut variable = String::new();
 		let mut in_variable = false;
@@ -65,35 +62,22 @@ impl SystemdUnit {
 			if ch == '@' {
 				in_variable = if in_variable {
 					match variable.as_str() {
-						"PACKAGE_NAME" => {
-							out.push_str(&self.package.title.name)
-						}
-						"PACKAGE_VERSION" => {
-							out.push_str(&self.package.title.version)
-						}
-						"PACKAGE_FILENAME" => out
-							.push_str(&self.package.title.to_string()),
-						"REGISTRY_PATH" => out
-							.push_str(&registry_path.to_string_lossy()),
-						"VOLUME_ROOT" => {
-							out.push_str(&volume_root.to_string_lossy())
-						}
+						"PACKAGE_NAME" => out.push_str(&self.package.title.name),
+						"PACKAGE_VERSION" => out.push_str(&self.package.title.version),
+						"PACKAGE_FILENAME" => out.push_str(&self.package.title.to_string()),
+						"REGISTRY_PATH" => out.push_str(&registry_path.to_string_lossy()),
+						"VOLUME_ROOT" => out.push_str(&volume_root.to_string_lossy()),
 						"CHARON_PATH" => {
 							out.push_str(
 								self.charon_path
 									.clone()
-									.unwrap_or(
-										DEFAULT_CHARON_BIN_PATH.into(),
-									)
+									.unwrap_or(DEFAULT_CHARON_BIN_PATH.into())
 									.to_str()
 									.unwrap(),
 							);
 						}
 						_ => {
-							return Err(anyhow!(
-								"invalid template variable '{}'",
-								variable
-							));
+							return Err(anyhow!("invalid template variable '{}'", variable));
 						}
 					};
 					variable = String::new();
@@ -112,9 +96,7 @@ impl SystemdUnit {
 		Ok(out)
 	}
 
-	pub async fn create_unit(
-		&self, registry_path: &PathBuf, volume_root: &PathBuf,
-	) -> Result<()> {
+	pub async fn create_unit(&self, registry_path: &Path, volume_root: &Path) -> Result<()> {
 		let mut f = std::fs::OpenOptions::new()
 			.create(true)
 			.truncate(true)
@@ -151,10 +133,7 @@ impl SystemdUnit {
 		let client = buckle::systemd::Systemd::new_system().await?;
 		client.reload().await?;
 		client
-			.start(format!(
-				"{}.service",
-				self.package.title.to_string()
-			))
+			.start(format!("{}.service", self.package.title))
 			.await?;
 
 		Ok(())
@@ -163,9 +142,7 @@ impl SystemdUnit {
 	pub async fn remove_unit(&self) -> Result<()> {
 		// FIXME: this should not be here! use GRPC!
 		let client = buckle::systemd::Systemd::new_system().await?;
-		let _ = client
-			.stop(format!("{}.service", self.package.title.to_string()))
-			.await;
+		let _ = client.stop(format!("{}.service", self.package.title)).await;
 		std::fs::remove_file(self.filename()).map_err(|e| {
 			anyhow!(
 				"Could not remove service unit {}: {}",
@@ -188,9 +165,7 @@ mod tests {
 	use crate::{CompiledPackage, Registry, SYSTEMD_SERVICE_ROOT};
 	use anyhow::Result;
 
-	async fn load(
-		registry: &Registry, name: &str, version: &str,
-	) -> Result<CompiledPackage> {
+	async fn load(registry: &Registry, name: &str, version: &str) -> Result<CompiledPackage> {
 		registry.load(name, version)?.compile().await
 	}
 
@@ -213,8 +188,7 @@ mod tests {
 	#[tokio::test]
 	async fn unit_contents() {
 		let registry = Registry::new("testdata/registry".into());
-		let pkg =
-			load(&registry, "podman-test", "0.0.2").await.unwrap();
+		let pkg = load(&registry, "podman-test", "0.0.2").await.unwrap();
 		let unit = SystemdUnit::new(
 			pkg,
 			Some(crate::SYSTEMD_SERVICE_ROOT.into()),

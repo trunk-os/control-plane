@@ -82,9 +82,7 @@ impl Default for Config {
 impl Config {
 	fn start_tracing(&self) -> Result<()> {
 		let subscriber = FmtSubscriber::builder()
-			.with_max_level(Into::<tracing::Level>::into(
-				self.log_level.clone(),
-			))
+			.with_max_level(Into::<tracing::Level>::into(self.log_level.clone()))
 			.finish();
 		tracing::subscriber::set_global_default(subscriber)?;
 

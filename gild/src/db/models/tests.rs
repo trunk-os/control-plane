@@ -4,9 +4,7 @@ use welds::state::DbState;
 
 use super::User;
 use crate::{
-	db::models::{
-		AuditLog, JWT_EXPIRATION_TIME, JWT_SESSION_ID_KEY, Session,
-	},
+	db::models::{AuditLog, JWT_EXPIRATION_TIME, JWT_SESSION_ID_KEY, Session},
 	server::messages::Authentication,
 	testutil::*,
 };
@@ -172,10 +170,7 @@ async fn user_basic() {
 		let pw = item.plaintext_password.clone().unwrap();
 		item.set_password(pw).unwrap();
 		assert_ne!(item.password.len(), 0);
-		assert_ne!(
-			item.password,
-			item.plaintext_password.clone().unwrap(),
-		);
+		assert_ne!(item.password, item.plaintext_password.clone().unwrap(),);
 		assert!(item.save(&db.handle).await.is_ok());
 		assert_ne!(item.id, 0);
 	}

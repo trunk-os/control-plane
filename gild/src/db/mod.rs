@@ -26,12 +26,7 @@ pub async fn migrate(filename: std::path::PathBuf) -> Result<()> {
 
 impl DB {
 	pub async fn new(config: Config) -> Result<Self> {
-		let this = match connect(&format!(
-			"sqlite:{}",
-			config.db.to_str().unwrap()
-		))
-		.await
-		{
+		let this = match connect(&format!("sqlite:{}", config.db.to_str().unwrap())).await {
 			Ok(c) => Self {
 				handle: c,
 				filename: config.db.clone(),
@@ -39,11 +34,7 @@ impl DB {
 			Err(_) => {
 				Self::create(config.clone()).await?;
 				Self {
-					handle: connect(&format!(
-						"sqlite:{}",
-						config.db.to_str().unwrap()
-					))
-					.await?,
+					handle: connect(&format!("sqlite:{}", config.db.to_str().unwrap())).await?,
 					filename: config.db.clone(),
 				}
 			}
@@ -54,17 +45,12 @@ impl DB {
 
 	async fn create(config: Config) -> anyhow::Result<()> {
 		if let Some(parent) = config.db.parent() {
-			std::fs::create_dir_all(&parent)?;
+			std::fs::create_dir_all(parent)?;
 		}
 
-		sqlx::sqlite::CREATE_DB_WAL
-			.store(true, std::sync::atomic::Ordering::Release);
+		sqlx::sqlite::CREATE_DB_WAL.store(true, std::sync::atomic::Ordering::Release);
 
-		Sqlite::create_database(&format!(
-			"sqlite:{}",
-			config.db.to_str().unwrap()
-		))
-		.await?;
+		Sqlite::create_database(&format!("sqlite:{}", config.db.to_str().unwrap())).await?;
 		Ok(())
 	}
 

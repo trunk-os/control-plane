@@ -7,9 +7,7 @@ const DELIMITER: char = '@';
 
 pub type Variables = HashMap<String, String>;
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Global {
 	pub name: String,
 	pub variables: Variables,
@@ -44,10 +42,7 @@ impl Global {
 				}
 
 				if !matched {
-					return Err(anyhow!(
-						"No response matches prompt '{}'",
-						tmp
-					));
+					return Err(anyhow!("No response matches prompt '{}'", tmp));
 				}
 
 				tmp = String::new();
@@ -192,10 +187,7 @@ mod tests {
 
 		assert!(global.template("@nonexistent@".into()).is_err());
 		assert_eq!(global.template("@foo@".into(),).unwrap(), "bar");
-		assert_eq!(
-			global.template("@foo@ @baz@".into(),).unwrap(),
-			"bar quux"
-		);
+		assert_eq!(global.template("@foo@ @baz@".into(),).unwrap(), "bar quux");
 
 		assert!(global.template("@foo".into()).is_ok());
 		assert_eq!(global.template("@foo".into()).unwrap(), "@foo");

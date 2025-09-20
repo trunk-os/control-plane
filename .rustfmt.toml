@@ -1,5 +1,5 @@
 # NOTE: adjust these two settings and I will track you and take your first born child
-max_width = 72
+max_width = 100
 hard_tabs = true
 
 edition = "2024"

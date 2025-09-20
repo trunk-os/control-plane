@@ -1,7 +1,6 @@
 use crate::{
-	Global, GlobalRegistry, PromptCollection, PromptResponses,
-	ProtoLastRunState, ProtoLoadState, ProtoRuntimeState, ProtoStatus,
-	ResponseRegistry, SystemdUnit, TemplatedInput,
+	Global, GlobalRegistry, PromptCollection, PromptResponses, ProtoLastRunState, ProtoLoadState,
+	ProtoRuntimeState, ProtoStatus, ResponseRegistry, SystemdUnit, TemplatedInput,
 	proto_package_installed::ProtoInstallState,
 };
 use anyhow::{Result, anyhow};
@@ -22,9 +21,7 @@ use std::path::{Path, PathBuf};
 const PACKAGE_SUBPATH: &str = "packages";
 const INSTALLED_SUBPATH: &str = "installed";
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourcePackage {
 	pub title: PackageTitle,
 	pub description: String,
@@ -60,15 +57,13 @@ impl Ord for SourcePackage {
 }
 
 impl SourcePackage {
-	pub fn from_file(
-		root: &Path, name: &str, version: &str,
-	) -> Result<Self> {
+	pub fn from_file(root: &Path, name: &str, version: &str) -> Result<Self> {
 		let pb = root
 			.join(PACKAGE_SUBPATH)
 			.join(name)
 			.join(format!("{}.json", version));
-		let mut res: Self = serde_json::from_reader(
-			std::fs::OpenOptions::new().read(true).open(pb).map_err(
+		let mut res: Self =
+			serde_json::from_reader(std::fs::OpenOptions::new().read(true).open(pb).map_err(
 				|e| {
 					anyhow!(
 						"Error loading {}/{} package definition: {}",
@@ -77,16 +72,15 @@ impl SourcePackage {
 						e
 					)
 				},
-			)?,
-		)
-		.map_err(|e| {
-			anyhow!(
-				"Error parsing JSON in {}/{} package definition: {}",
-				name,
-				version,
-				e
-			)
-		})?;
+			)?)
+			.map_err(|e| {
+				anyhow!(
+					"Error parsing JSON in {}/{} package definition: {}",
+					name,
+					version,
+					e
+				)
+			})?;
 		res.root = Some(root.to_path_buf());
 		Ok(res)
 	}
@@ -118,9 +112,7 @@ impl SourcePackage {
 	}
 
 	#[inline]
-	pub fn set_responses(
-		&self, responses: &PromptResponses,
-	) -> Result<()> {
+	pub fn set_responses(&self, responses: &PromptResponses) -> Result<()> {
 		self.response_registry()?.set(&self.title.name, responses)
 	}
 
@@ -139,9 +131,7 @@ impl SourcePackage {
 			title: self.title.clone(),
 			description: self.description.clone(),
 			dependencies: self.dependencies.clone().unwrap_or_default(),
-			source: self
-				.source
-				.compile(&globals, &prompts, &responses)?,
+			source: self.source.compile(&globals, &prompts, &responses)?,
 			networking: self
 				.networking
 				.clone()
@@ -187,9 +177,7 @@ impl SourcePackage {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledPackage {
 	pub title: PackageTitle,
 	pub description: String,
@@ -212,59 +200,33 @@ pub enum InstallStatus {
 impl From<InstallStatus> for ProtoInstallState {
 	fn from(value: InstallStatus) -> Self {
 		match &value {
-			InstallStatus::Installed(status) => {
-				Self::Installed(ProtoStatus {
-					load_state: match status.load_state {
-						LoadState::Loaded => ProtoLoadState::Loaded,
-						LoadState::Unloaded => ProtoLoadState::Unloaded,
-						LoadState::Inactive => ProtoLoadState::Inactive,
-					}
-					.into(),
-					runtime_state: match status.runtime_state {
-						RuntimeState::Started => {
-							ProtoRuntimeState::Started
-						}
-						RuntimeState::Stopped => {
-							ProtoRuntimeState::Stopped
-						}
-						RuntimeState::Reloaded => {
-							ProtoRuntimeState::Reloaded
-						}
-						RuntimeState::Restarted => {
-							ProtoRuntimeState::Restarted
-						}
-					}
-					.into(),
-					last_run_state: match status.last_run_state {
-						LastRunState::Dead => ProtoLastRunState::Dead,
-						LastRunState::Failed => {
-							ProtoLastRunState::Failed
-						}
-						LastRunState::Exited => {
-							ProtoLastRunState::Exited
-						}
-						LastRunState::Active => {
-							ProtoLastRunState::Active
-						}
-						LastRunState::Mounted => {
-							ProtoLastRunState::Mounted
-						}
-						LastRunState::Running => {
-							ProtoLastRunState::Running
-						}
-						LastRunState::Plugged => {
-							ProtoLastRunState::Plugged
-						}
-						LastRunState::Waiting => {
-							ProtoLastRunState::Waiting
-						}
-						LastRunState::Listening => {
-							ProtoLastRunState::Listening
-						}
-					}
-					.into(),
-				})
-			}
+			InstallStatus::Installed(status) => Self::Installed(ProtoStatus {
+				load_state: match status.load_state {
+					LoadState::Loaded => ProtoLoadState::Loaded,
+					LoadState::Unloaded => ProtoLoadState::Unloaded,
+					LoadState::Inactive => ProtoLoadState::Inactive,
+				}
+				.into(),
+				runtime_state: match status.runtime_state {
+					RuntimeState::Started => ProtoRuntimeState::Started,
+					RuntimeState::Stopped => ProtoRuntimeState::Stopped,
+					RuntimeState::Reloaded => ProtoRuntimeState::Reloaded,
+					RuntimeState::Restarted => ProtoRuntimeState::Restarted,
+				}
+				.into(),
+				last_run_state: match status.last_run_state {
+					LastRunState::Dead => ProtoLastRunState::Dead,
+					LastRunState::Failed => ProtoLastRunState::Failed,
+					LastRunState::Exited => ProtoLastRunState::Exited,
+					LastRunState::Active => ProtoLastRunState::Active,
+					LastRunState::Mounted => ProtoLastRunState::Mounted,
+					LastRunState::Running => ProtoLastRunState::Running,
+					LastRunState::Plugged => ProtoLastRunState::Plugged,
+					LastRunState::Waiting => ProtoLastRunState::Waiting,
+					LastRunState::Listening => ProtoLastRunState::Listening,
+				}
+				.into(),
+			}),
 			InstallStatus::NotInstalled => Self::NotInstalled(()),
 		}
 	}
@@ -273,57 +235,30 @@ impl From<InstallStatus> for ProtoInstallState {
 impl From<ProtoInstallState> for InstallStatus {
 	fn from(value: ProtoInstallState) -> Self {
 		match &value {
-			ProtoInstallState::Installed(status) => {
-				Self::Installed(buckle::systemd::Status {
-					load_state: match status.load_state() {
-						ProtoLoadState::Loaded => LoadState::Loaded,
-						ProtoLoadState::Unloaded => LoadState::Unloaded,
-						ProtoLoadState::Inactive => LoadState::Inactive,
-					},
-					runtime_state: match status.runtime_state() {
-						ProtoRuntimeState::Started => {
-							RuntimeState::Started
-						}
-						ProtoRuntimeState::Stopped => {
-							RuntimeState::Stopped
-						}
-						ProtoRuntimeState::Reloaded => {
-							RuntimeState::Reloaded
-						}
-						ProtoRuntimeState::Restarted => {
-							RuntimeState::Restarted
-						}
-					},
-					last_run_state: match status.last_run_state() {
-						ProtoLastRunState::Dead => LastRunState::Dead,
-						ProtoLastRunState::Failed => {
-							LastRunState::Failed
-						}
-						ProtoLastRunState::Exited => {
-							LastRunState::Exited
-						}
-						ProtoLastRunState::Active => {
-							LastRunState::Active
-						}
-						ProtoLastRunState::Mounted => {
-							LastRunState::Mounted
-						}
-						ProtoLastRunState::Running => {
-							LastRunState::Running
-						}
-						ProtoLastRunState::Plugged => {
-							LastRunState::Plugged
-						}
-						ProtoLastRunState::Waiting => {
-							LastRunState::Waiting
-						}
-						ProtoLastRunState::Listening => {
-							LastRunState::Listening
-						}
-					}
-					.into(),
-				})
-			}
+			ProtoInstallState::Installed(status) => Self::Installed(buckle::systemd::Status {
+				load_state: match status.load_state() {
+					ProtoLoadState::Loaded => LoadState::Loaded,
+					ProtoLoadState::Unloaded => LoadState::Unloaded,
+					ProtoLoadState::Inactive => LoadState::Inactive,
+				},
+				runtime_state: match status.runtime_state() {
+					ProtoRuntimeState::Started => RuntimeState::Started,
+					ProtoRuntimeState::Stopped => RuntimeState::Stopped,
+					ProtoRuntimeState::Reloaded => RuntimeState::Reloaded,
+					ProtoRuntimeState::Restarted => RuntimeState::Restarted,
+				},
+				last_run_state: match status.last_run_state() {
+					ProtoLastRunState::Dead => LastRunState::Dead,
+					ProtoLastRunState::Failed => LastRunState::Failed,
+					ProtoLastRunState::Exited => LastRunState::Exited,
+					ProtoLastRunState::Active => LastRunState::Active,
+					ProtoLastRunState::Mounted => LastRunState::Mounted,
+					ProtoLastRunState::Running => LastRunState::Running,
+					ProtoLastRunState::Plugged => LastRunState::Plugged,
+					ProtoLastRunState::Waiting => LastRunState::Waiting,
+					ProtoLastRunState::Listening => LastRunState::Listening,
+				},
+			}),
 			ProtoInstallState::NotInstalled(_) => Self::NotInstalled,
 		}
 	}
@@ -331,8 +266,7 @@ impl From<ProtoInstallState> for InstallStatus {
 
 impl CompiledPackage {
 	pub fn systemd_unit(
-		&self, systemd_root: Option<PathBuf>,
-		charon_path: Option<PathBuf>,
+		&self, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
 	) -> SystemdUnit {
 		SystemdUnit::new(self.clone(), systemd_root, charon_path)
 	}
@@ -345,8 +279,7 @@ impl CompiledPackage {
 	}
 
 	pub async fn install(&self) -> Result<()> {
-		let pb =
-			self.root.join(INSTALLED_SUBPATH).join(&self.title.name);
+		let pb = self.root.join(INSTALLED_SUBPATH).join(&self.title.name);
 		std::fs::create_dir_all(&pb)?;
 
 		std::fs::OpenOptions::new()
@@ -366,9 +299,7 @@ impl CompiledPackage {
 	pub async fn installed(&self) -> Result<InstallStatus> {
 		if std::fs::exists(self.installed_path())? {
 			let client = buckle::systemd::Systemd::new_system().await?;
-			let path = client
-				.get_unit(format!("{}.service", self.title.to_string()))
-				.await?;
+			let path = client.get_unit(format!("{}.service", self.title)).await?;
 			let status = client.status(path).await?;
 			Ok(InstallStatus::Installed(status))
 		} else {
@@ -376,11 +307,8 @@ impl CompiledPackage {
 		}
 	}
 
-	pub async fn provision(
-		&self, buckle_socket: &PathBuf,
-	) -> Result<()> {
-		let client =
-			buckle::client::Client::new(buckle_socket.clone())?;
+	pub async fn provision(&self, buckle_socket: &Path) -> Result<()> {
+		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
 		client
 			.zfs()
@@ -416,11 +344,8 @@ impl CompiledPackage {
 		Ok(())
 	}
 
-	pub async fn deprovision(
-		&self, buckle_socket: &PathBuf,
-	) -> Result<()> {
-		let client =
-			buckle::client::Client::new(buckle_socket.clone())?;
+	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
+		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
 		for volume in &self.storage.volumes {
 			client
@@ -436,9 +361,7 @@ impl CompiledPackage {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PackageTitle {
 	pub name: String,
 	pub version: String,
@@ -462,9 +385,7 @@ impl Ord for PackageTitle {
 	#[inline]
 	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
 		match self.name.cmp(&other.name) {
-			std::cmp::Ordering::Equal => {
-				self.version.cmp(&other.version)
-			}
+			std::cmp::Ordering::Equal => self.version.cmp(&other.version),
 			x => x,
 		}
 	}
@@ -487,16 +408,11 @@ impl Default for Source {
 
 impl Source {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledSource> {
 		Ok(match self {
-			Self::URL(x) => CompiledSource::URL(
-				x.output(globals, prompts, responses)?,
-			),
-			Self::Container(x) => CompiledSource::Container(
-				x.output(globals, prompts, responses)?,
-			),
+			Self::URL(x) => CompiledSource::URL(x.output(globals, prompts, responses)?),
+			Self::Container(x) => CompiledSource::Container(x.output(globals, prompts, responses)?),
 		})
 	}
 }
@@ -516,16 +432,12 @@ impl Default for CompiledSource {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Networking {
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub forward_ports:
-		Option<Vec<(TemplatedInput<u16>, TemplatedInput<u16>)>>,
+	pub forward_ports: Option<Vec<(TemplatedInput<u16>, TemplatedInput<u16>)>>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub expose_ports:
-		Option<Vec<(TemplatedInput<u16>, TemplatedInput<u16>)>>,
+	pub expose_ports: Option<Vec<(TemplatedInput<u16>, TemplatedInput<u16>)>>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub internal_network: Option<TemplatedInput<String>>,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -534,8 +446,7 @@ pub struct Networking {
 
 impl Networking {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledNetworking> {
 		let mut forward_ports = Vec::new();
 		if let Some(fp) = &self.forward_ports {
@@ -592,9 +503,7 @@ impl Networking {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledNetworking {
 	pub forward_ports: Vec<(u16, u16)>,
 	pub expose_ports: Vec<(u16, u16)>,
@@ -604,17 +513,14 @@ pub struct CompiledNetworking {
 	pub hostname: Option<String>,
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Storage {
 	pub volumes: Vec<Volume>,
 }
 
 impl Storage {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledStorage> {
 		let mut v = Vec::new();
 		for volume in &self.volumes {
@@ -625,16 +531,12 @@ impl Storage {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledStorage {
 	pub volumes: Vec<CompiledVolume>,
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Volume {
 	pub name: TemplatedInput<String>,
 	pub size: TemplatedInput<u64>,
@@ -645,8 +547,7 @@ pub struct Volume {
 
 impl Volume {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledVolume> {
 		let mountpoint = if let Some(mountpoint) = self
 			.mountpoint
@@ -665,19 +566,13 @@ impl Volume {
 			name: self.name.output(globals, prompts, responses)?,
 			size: self.size.output(globals, prompts, responses)?,
 			mountpoint,
-			recreate: self
-				.recreate
-				.output(globals, prompts, responses)?,
-			private: self
-				.private
-				.output(globals, prompts, responses)?,
+			recreate: self.recreate.output(globals, prompts, responses)?,
+			private: self.private.output(globals, prompts, responses)?,
 		})
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledVolume {
 	pub name: String,
 	pub size: u64,
@@ -686,9 +581,7 @@ pub struct CompiledVolume {
 	pub private: bool,
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct System {
 	// --pid host
 	pub host_pid: TemplatedInput<bool>,
@@ -700,8 +593,7 @@ pub struct System {
 
 impl System {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledSystem> {
 		let mut capabilities = Vec::new();
 
@@ -710,23 +602,15 @@ impl System {
 		}
 
 		Ok(CompiledSystem {
-			host_pid: self
-				.host_pid
-				.output(globals, prompts, responses)?,
-			host_net: self
-				.host_net
-				.output(globals, prompts, responses)?,
+			host_pid: self.host_pid.output(globals, prompts, responses)?,
+			host_net: self.host_net.output(globals, prompts, responses)?,
 			capabilities,
-			privileged: self
-				.privileged
-				.output(globals, prompts, responses)?,
+			privileged: self.privileged.output(globals, prompts, responses)?,
 		})
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledSystem {
 	// --pid host
 	pub host_pid: bool,
@@ -736,9 +620,7 @@ pub struct CompiledSystem {
 	pub privileged: bool,
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Resources {
 	pub cpus: TemplatedInput<u64>,
 	pub memory: TemplatedInput<u64>,
@@ -747,8 +629,7 @@ pub struct Resources {
 
 impl Resources {
 	pub fn compile(
-		&self, globals: &Global, prompts: &PromptCollection,
-		responses: &PromptResponses,
+		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledResources> {
 		Ok(CompiledResources {
 			cpus: self.cpus.output(globals, prompts, responses)?,
@@ -757,9 +638,7 @@ impl Resources {
 	}
 }
 
-#[derive(
-	Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize,
-)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CompiledResources {
 	pub cpus: u64,
 	pub memory: u64,
@@ -782,18 +661,17 @@ impl Registry {
 	pub fn list(&self) -> Result<Vec<PackageTitle>> {
 		let mut v = Vec::new();
 
-		let mut items =
-			std::fs::read_dir(self.root.join(PACKAGE_SUBPATH))?
-				.filter_map(|x| {
-					if let Ok(x) = x {
-						if x.metadata().ok()?.is_dir() {
-							return Some(x.path());
-						}
-					}
+		let mut items = std::fs::read_dir(self.root.join(PACKAGE_SUBPATH))?
+			.filter_map(|x| {
+				if let Ok(x) = x
+					&& x.metadata().ok()?.is_dir()
+				{
+					return Some(x.path());
+				}
 
-					None
-				})
-				.collect::<Vec<PathBuf>>();
+				None
+			})
+			.collect::<Vec<PathBuf>>();
 
 		items.sort();
 
@@ -801,10 +679,10 @@ impl Registry {
 			let name = item.file_name().unwrap().to_str().unwrap();
 			let mut inner = std::fs::read_dir(item)?
 				.filter_map(|x| {
-					if let Ok(x) = x {
-						if x.metadata().ok()?.is_file() {
-							return Some(x.path());
-						}
+					if let Ok(x) = x
+						&& x.metadata().ok()?.is_file()
+					{
+						return Some(x.path());
 					}
 
 					None
@@ -814,8 +692,7 @@ impl Registry {
 			inner.sort();
 
 			for item in inner.iter().rev().collect::<Vec<&PathBuf>>() {
-				let version =
-					item.file_stem().unwrap().to_str().unwrap();
+				let version = item.file_stem().unwrap().to_str().unwrap();
 
 				v.push(PackageTitle {
 					name: name.to_string(),
@@ -830,8 +707,7 @@ impl Registry {
 	pub fn installed(&self) -> Result<Vec<PackageTitle>> {
 		let mut v = Vec::new();
 
-		let items =
-			std::fs::read_dir(self.root.join(INSTALLED_SUBPATH))?;
+		let items = std::fs::read_dir(self.root.join(INSTALLED_SUBPATH))?;
 
 		for item in items {
 			let item = item?;
@@ -844,8 +720,7 @@ impl Registry {
 					let item = item?;
 					if item.metadata()?.is_file() {
 						let path = item.path();
-						let version =
-							path.file_name().unwrap().to_str().unwrap();
+						let version = path.file_name().unwrap().to_str().unwrap();
 
 						v.push(PackageTitle {
 							name: name.to_string(),
@@ -866,17 +741,14 @@ impl Registry {
 	pub fn validate(&self, name: &str, version: &str) -> Result<()> {
 		let package = self.load(name, version)?;
 
-		if package.title.name != name
-			|| package.title.version != version
-		{
+		if package.title.name != name || package.title.version != version {
 			return Err(anyhow!("Invalid name or version"));
 		}
 
 		// validate we can load globals, but we don't need them
 		let _ = package.globals()?;
 
-		let dependencies =
-			package.dependencies.clone().unwrap_or_default();
+		let dependencies = package.dependencies.clone().unwrap_or_default();
 
 		// validate package dependencies exist
 		for item in &dependencies {
@@ -892,19 +764,15 @@ impl Registry {
 		)?)
 	}
 
-	pub fn load(
-		&self, name: &str, version: &str,
-	) -> Result<SourcePackage> {
+	pub fn load(&self, name: &str, version: &str) -> Result<SourcePackage> {
 		SourcePackage::from_file(&self.root, name, version)
 	}
 
 	pub fn write(&self, package: &SourcePackage) -> Result<()> {
-		let pb =
-			self.root.join(PACKAGE_SUBPATH).join(&package.title.name);
+		let pb = self.root.join(PACKAGE_SUBPATH).join(&package.title.name);
 		std::fs::create_dir_all(&pb)?;
 
-		let name =
-			pb.join(format!("{}.json.tmp", package.title.version));
+		let name = pb.join(format!("{}.json.tmp", package.title.version));
 		let f = std::fs::OpenOptions::new()
 			.create(true)
 			.truncate(true)
@@ -928,8 +796,7 @@ impl Registry {
 #[cfg(test)]
 mod tests {
 	use crate::{
-		CompiledPackage, Global, GlobalRegistry, PackageTitle,
-		Registry, SourcePackage, Variables,
+		CompiledPackage, Global, GlobalRegistry, PackageTitle, Registry, SourcePackage, Variables,
 	};
 
 	#[test]
@@ -953,30 +820,18 @@ mod tests {
 		// doesn't have a variables json
 		assert!(registry.validate("no-variables", "0.0.1").is_err());
 
-		assert!(
-			registry.validate("with-dependencies", "0.0.1").is_ok()
-		);
+		assert!(registry.validate("with-dependencies", "0.0.1").is_ok());
 
 		// depends on a non-existent version of plex
-		assert!(
-			registry.validate("bad-dependencies", "0.0.1").is_err()
-		);
+		assert!(registry.validate("bad-dependencies", "0.0.1").is_err());
 		// depends on non-existent package
-		assert!(
-			registry.validate("bad-dependencies", "0.0.2").is_err()
-		);
+		assert!(registry.validate("bad-dependencies", "0.0.2").is_err());
 		// depends on a bad package
-		assert!(
-			registry.validate("bad-dependencies", "0.0.3").is_err()
-		);
+		assert!(registry.validate("bad-dependencies", "0.0.3").is_err());
 		// invalid name, valid version
-		assert!(
-			registry.validate("bad-name-version", "0.0.1").is_err()
-		);
+		assert!(registry.validate("bad-name-version", "0.0.1").is_err());
 		// invalid version, valid name
-		assert!(
-			registry.validate("bad-name-version", "0.0.2").is_err()
-		);
+		assert!(registry.validate("bad-name-version", "0.0.2").is_err());
 	}
 
 	#[test]
@@ -997,8 +852,7 @@ mod tests {
 
 		for item in table {
 			assert!(pr.write(item).is_ok());
-			let cmp =
-				pr.load(&item.title.name, &item.title.version).unwrap();
+			let cmp = pr.load(&item.title.name, &item.title.version).unwrap();
 			assert_eq!(item.clone(), cmp);
 		}
 	}

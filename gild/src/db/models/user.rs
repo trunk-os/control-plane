@@ -1,9 +1,6 @@
 use argon2::{
 	Argon2,
-	password_hash::{
-		PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
-		rand_core::OsRng,
-	},
+	password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 
 use anyhow::{Result, anyhow};
@@ -70,16 +67,13 @@ impl User {
 		}
 
 		let crypt = Argon2::default();
-		let parsed = PasswordHash::new(&self.password)
-			.map_err(|e| anyhow!(e.to_string()))?;
+		let parsed = PasswordHash::new(&self.password).map_err(|e| anyhow!(e.to_string()))?;
 		crypt
 			.verify_password(password.as_bytes(), &parsed)
 			.map_err(|e| anyhow!(e.to_string()))
 	}
 
-	pub(crate) fn set_password(
-		&mut self, password: String,
-	) -> Result<()> {
+	pub(crate) fn set_password(&mut self, password: String) -> Result<()> {
 		let crypt = Argon2::default();
 		let salt = SaltString::generate(&mut OsRng);
 		self.password = crypt
