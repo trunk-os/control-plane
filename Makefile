@@ -5,7 +5,7 @@ test: charon/testdata/ubuntu.img
 clean:
 	sudo `which cargo` clean
 	cargo clean
-	sudo rm -rf buckle/tmp charon/tmp	gild/tmp
+	sudo rm -rf buckle/tmp charon/tmp gild/tmp
 
 charon/testdata/ubuntu.img:
 	cd charon && make
