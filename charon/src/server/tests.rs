@@ -5,9 +5,15 @@ use crate::{
 use std::path::PathBuf;
 use tempfile::{NamedTempFile, tempdir};
 
-async fn start_server(
+// FIXME: move this somewhere else
+pub async fn start_server(
 	debug: bool, pool: Option<String>,
-) -> (PathBuf, Option<PathBuf>, Option<(PathBuf, String, String)>) {
+) -> (
+	Config,
+	PathBuf,
+	Option<PathBuf>,
+	Option<(PathBuf, String, String)>,
+) {
 	let tf = NamedTempFile::new().unwrap();
 	let (_, path) = tf.keep().unwrap();
 	let pb = path.to_path_buf();
@@ -42,33 +48,29 @@ async fn start_server(
 	let bi = buckle_info.clone();
 
 	let inner = systemd_root.clone();
-	tokio::spawn(async move {
-		Server::new(Config {
-			socket: pb2,
-			log_level: None,
-			debug: Some(debug),
-			registry: RegistryConfig {
-				path: "testdata/registry".into(),
-				url: None,
-			},
-			systemd_root: inner,
-			charon_path: Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
-			buckle_socket: bi.map(|x| x.0).unwrap_or("/tmp/buckled.sock".into()),
-		})
-		.start()
-		.unwrap()
-		.await
-		.unwrap()
-	});
+	let config = Config {
+		socket: pb2,
+		log_level: None,
+		debug: Some(debug),
+		registry: RegistryConfig {
+			path: "testdata/registry".into(),
+			url: None,
+		},
+		systemd_root: inner,
+		charon_path: Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
+		buckle_socket: bi.map(|x| x.0).unwrap_or("/tmp/buckled.sock".into()),
+	};
+	let inner_config = config.clone();
 
+	tokio::spawn(async move { Server::new(inner_config).start().unwrap().await.unwrap() });
 	tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 
-	(path, systemd_root, buckle_info)
+	(config, path, systemd_root, buckle_info)
 }
 
 #[tokio::test]
 async fn test_ping() {
-	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
+	let client = Client::new(start_server(true, None).await.1.to_path_buf()).unwrap();
 	client.status().await.unwrap().ping().await.unwrap();
 }
 
@@ -76,7 +78,7 @@ async fn test_ping() {
 async fn test_write_unit_real() {
 	// real mode. validate written. this test also reloads systemd (which doesn't pick up anything
 	// new because of the temporary path to write to) so it needs to be run as root.
-	let (socket, systemd_path, buckle_info) =
+	let (_, socket, systemd_path, buckle_info) =
 		start_server(false, Some("write-unit-real".into())).await;
 	let client = Client::new(socket).unwrap();
 
@@ -139,7 +141,7 @@ Alias=podman-test-0.0.2.service
 #[tokio::test]
 async fn test_write_unit() {
 	// debug mode
-	let (socket, _, buckle_info) = start_server(true, Some("write-unit".into())).await;
+	let (_, socket, _, buckle_info) = start_server(true, Some("write-unit".into())).await;
 
 	let client = Client::new(socket).unwrap();
 
@@ -158,7 +160,7 @@ async fn test_write_unit() {
 
 #[tokio::test]
 async fn test_get_prompts() {
-	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
+	let client = Client::new(start_server(true, None).await.1.to_path_buf()).unwrap();
 	let prompts = client
 		.query()
 		.await
@@ -217,7 +219,7 @@ async fn set_get_responses() {
 		},
 	]);
 
-	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
+	let client = Client::new(start_server(true, None).await.1.to_path_buf()).unwrap();
 	client
 		.query()
 		.await
@@ -263,7 +265,7 @@ async fn list() {
 		}
 	}
 
-	let client = Client::new(start_server(true, None).await.0.to_path_buf()).unwrap();
+	let client = Client::new(start_server(true, None).await.1.to_path_buf()).unwrap();
 
 	let list = client.query().await.unwrap().list().await.unwrap();
 	assert_eq!(list, v)
@@ -278,7 +280,7 @@ async fn installer() {
 	let client = Client::new(
 		start_server(true, Some("test-installer".into()))
 			.await
-			.0
+			.1
 			.to_path_buf(),
 	)
 	.unwrap();

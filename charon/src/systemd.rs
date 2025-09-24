@@ -21,6 +21,7 @@ Alias=@PACKAGE_FILENAME@.service
 
 #[derive(Debug, Clone)]
 pub struct SystemdUnit {
+	buckle: buckle::client::Client,
 	package: CompiledPackage,
 	systemd_root: Option<PathBuf>,
 	charon_path: Option<PathBuf>,
@@ -28,9 +29,11 @@ pub struct SystemdUnit {
 
 impl SystemdUnit {
 	pub fn new(
-		package: CompiledPackage, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
+		buckle: buckle::client::Client, package: CompiledPackage, systemd_root: Option<PathBuf>,
+		charon_path: Option<PathBuf>,
 	) -> Self {
 		Self {
+			buckle,
 			package,
 			systemd_root,
 			charon_path,
@@ -129,11 +132,11 @@ impl SystemdUnit {
 			)
 		})?;
 
-		// FIXME: this should not be here! use GRPC!
-		let client = buckle::systemd::Systemd::new_system().await?;
-		client.reload().await?;
-		client
-			.start(format!("{}.service", self.package.title))
+		self.buckle.systemd().await?.reload().await?;
+		self.buckle
+			.systemd()
+			.await?
+			.start_unit(format!("{}.service", self.package.title))
 			.await?;
 
 		Ok(())
@@ -162,6 +165,7 @@ mod tests {
 	use std::path::PathBuf;
 
 	use super::SystemdUnit;
+	use crate::server::tests::start_server;
 	use crate::{CompiledPackage, Registry, SYSTEMD_SERVICE_ROOT};
 	use anyhow::Result;
 
@@ -171,8 +175,11 @@ mod tests {
 
 	#[tokio::test]
 	async fn unit_names() {
+		let (config, _, _, buckle_info) =
+			start_server(false, Some("charon-test-unit-names".into())).await;
 		let registry = Registry::new("testdata/registry".into());
 		let unit = SystemdUnit::new(
+			config.buckle().unwrap(),
 			load(&registry, "podman-test", "0.0.2").await.unwrap(),
 			Some(SYSTEMD_SERVICE_ROOT.into()),
 			Some("/usr/bin/charon".into()),
@@ -183,13 +190,19 @@ mod tests {
 		);
 
 		assert_eq!(unit.service_name(), "podman-test-0.0.2.service");
+		if let Some(buckle_info) = buckle_info {
+			let _ = buckle::testutil::destroy_zpool("charon-test-unit-names", Some(&buckle_info.2));
+		}
 	}
 
 	#[tokio::test]
 	async fn unit_contents() {
+		let (config, _, _, buckle_info) =
+			start_server(false, Some("charon-test-unit-contents".into())).await;
 		let registry = Registry::new("testdata/registry".into());
 		let pkg = load(&registry, "podman-test", "0.0.2").await.unwrap();
 		let unit = SystemdUnit::new(
+			config.buckle().unwrap(),
 			pkg,
 			Some(crate::SYSTEMD_SERVICE_ROOT.into()),
 			Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
@@ -214,5 +227,8 @@ TimeoutSec=300
 Alias=podman-test-0.0.2.service
 "#,
 		);
+		if let Some(buckle_info) = buckle_info {
+			let _ = buckle::testutil::destroy_zpool("charon-test-unit-names", Some(&buckle_info.2));
+		}
 	}
 }

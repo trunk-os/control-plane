@@ -1,7 +1,7 @@
 use crate::{
 	grpc::{
-		GrpcLogDirection, GrpcLogMessage, GrpcLogParams, GrpcUnitSettings, PingResult,
-		UnitEnabledState, UnitListFilter, UnitRuntimeState, ZfsListFilter, ZfsName,
+		GrpcLogDirection, GrpcLogMessage, GrpcLogParams, GrpcUnitName, GrpcUnitSettings,
+		PingResult, UnitEnabledState, UnitListFilter, UnitRuntimeState, ZfsListFilter, ZfsName,
 		status_client::StatusClient as GRPCStatusClient,
 		systemd_client::SystemdClient as GRPCSystemdClient, zfs_client::ZfsClient as GRPCZfsClient,
 	},
@@ -59,6 +59,12 @@ impl Client {
 }
 
 impl SystemdClient {
+	pub async fn start_unit(&mut self, name: String) -> Result<()> {
+		self.client
+			.start_unit(Request::new(GrpcUnitName { name }))
+			.await?;
+		Ok(())
+	}
 	pub async fn reload(&mut self) -> Result<()> {
 		self.client.reload(()).await?;
 		Ok(())

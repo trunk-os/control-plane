@@ -132,6 +132,10 @@ message GRPCUnit {
   GRPCUnitStatus    status        = 5;
 }
 
+message GRPCUnitName {
+  string name = 1;
+}
+
 message GRPCUnitSettings {
   string           name          = 1;
   UnitRuntimeState runtime_state = 2;
@@ -171,4 +175,5 @@ service Systemd {
   rpc List(UnitListFilter)          returns (GRPCUnitList);
   rpc UnitLog(GRPCLogParams)        returns (stream GRPCLogMessage);
   rpc Reload(google.protobuf.Empty) returns (google.protobuf.Empty);
+  rpc StartUnit(GRPCUnitName)       returns (google.protobuf.Empty);
 }

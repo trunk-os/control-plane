@@ -146,6 +146,9 @@ async fn main() -> Result<()> {
 		Commands::CreateUnit(cu_args) => {
 			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			let systemd = SystemdUnit::new(
+				buckle::client::Client::new(args.buckle_socket.expect(
+					"buckle connectivity is required for this operation; please use the buckle commandline flag.",
+				))?,
 				r.load(&cu_args.package_name, &cu_args.package_version)?
 					.compile()
 					.await?,

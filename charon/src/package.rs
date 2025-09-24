@@ -1,7 +1,7 @@
 use crate::{
-	Global, GlobalRegistry, PromptCollection, PromptResponses, ProtoLastRunState, ProtoLoadState,
-	ProtoPackageTitle, ProtoRuntimeState, ProtoStatus, ResponseRegistry, SystemdUnit,
-	TemplatedInput, proto_package_installed::ProtoInstallState,
+	Config, Global, GlobalRegistry, PromptCollection, PromptResponses, ProtoLastRunState,
+	ProtoLoadState, ProtoPackageTitle, ProtoRuntimeState, ProtoStatus, ResponseRegistry,
+	SystemdUnit, TemplatedInput, proto_package_installed::ProtoInstallState,
 };
 use anyhow::{Result, anyhow};
 use buckle::{
@@ -266,9 +266,15 @@ impl From<ProtoInstallState> for InstallStatus {
 
 impl CompiledPackage {
 	pub fn systemd_unit(
-		&self, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
+		&self, config: Config, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
 	) -> SystemdUnit {
-		SystemdUnit::new(self.clone(), systemd_root, charon_path)
+		SystemdUnit::new(
+			// FIXME: remove this expect when the time is right
+			config.buckle().expect("Could not connect to buckle"),
+			self.clone(),
+			systemd_root,
+			charon_path,
+		)
 	}
 
 	fn installed_path(&self) -> PathBuf {

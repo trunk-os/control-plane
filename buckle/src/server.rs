@@ -1,8 +1,8 @@
 use crate::{
 	grpc::{
-		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitSettings, PingResult, UnitListFilter,
-		ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsRoot,
-		ZfsVolume,
+		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitName, GrpcUnitSettings, PingResult,
+		UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume,
+		ZfsName, ZfsRoot, ZfsVolume,
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
@@ -58,6 +58,17 @@ impl Server {
 
 #[tonic::async_trait]
 impl Systemd for Server {
+	async fn start_unit(&self, req: tonic::Request<GrpcUnitName>) -> Result<Response<()>> {
+		Ok(Response::new(
+			crate::systemd::Systemd::new_system()
+				.await
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
+				.start(req.into_inner().name)
+				.await
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
+		))
+	}
+
 	async fn reload(&self, _: tonic::Request<()>) -> Result<Response<()>> {
 		Ok(Response::new(
 			crate::systemd::Systemd::new_system()

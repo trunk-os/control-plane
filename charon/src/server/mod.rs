@@ -12,7 +12,7 @@ use tonic_middleware::{Middleware, MiddlewareLayer, ServiceBound};
 use tracing::{error, info};
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 #[derive(Debug, Clone)]
 pub struct Server {
@@ -153,6 +153,9 @@ impl Control for Server {
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
+			self.config
+				.buckle()
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
@@ -198,6 +201,9 @@ impl Control for Server {
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
+			self.config
+				.buckle()
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
