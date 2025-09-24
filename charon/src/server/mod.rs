@@ -6,7 +6,7 @@ use crate::{
 	query_server::{Query, QueryServer},
 	status_server::{Status, StatusServer},
 };
-use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::PathBuf};
+use std::{fs::Permissions, os::unix::fs::PermissionsExt, path::Path};
 use tonic::{Result, body::Body, transport::Server as TransportServer};
 use tonic_middleware::{Middleware, MiddlewareLayer, ServiceBound};
 use tracing::{error, info};
@@ -157,9 +157,27 @@ impl Control for Server {
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
 		);
-		unit.create_unit(&self.config.registry.path, &PathBuf::from("/tmp/volroot"))
+
+		let client = self
+			.config
+			.buckle()
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+		let mut zfs_client = client
+			.zfs()
 			.await
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+
+		unit.create_unit(
+			&self.config.registry.path,
+			&Into::<crate::PackageTitle>::into(title).format_volume(&Path::new(
+				&zfs_client
+					.root_path()
+					.await
+					.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
+			)),
+		)
+		.await
+		.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		info!("Wrote unit to {}", unit.filename().display());
 

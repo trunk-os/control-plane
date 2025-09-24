@@ -109,8 +109,8 @@ async fn test_write_unit_real() {
 Description=Charon launcher for podman-test, version 0.0.2
 
 [Service]
-ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /tmp/volroot
-ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /tmp/volroot
+ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
+ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
 Restart=always
 TimeoutSec=300
 

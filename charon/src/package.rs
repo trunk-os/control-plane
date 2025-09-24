@@ -1,7 +1,7 @@
 use crate::{
 	Global, GlobalRegistry, PromptCollection, PromptResponses, ProtoLastRunState, ProtoLoadState,
-	ProtoRuntimeState, ProtoStatus, ResponseRegistry, SystemdUnit, TemplatedInput,
-	proto_package_installed::ProtoInstallState,
+	ProtoPackageTitle, ProtoRuntimeState, ProtoStatus, ResponseRegistry, SystemdUnit,
+	TemplatedInput, proto_package_installed::ProtoInstallState,
 };
 use anyhow::{Result, anyhow};
 use buckle::{
@@ -361,10 +361,25 @@ impl CompiledPackage {
 	}
 }
 
+impl From<ProtoPackageTitle> for PackageTitle {
+	fn from(value: ProtoPackageTitle) -> Self {
+		Self {
+			name: value.name,
+			version: value.version,
+		}
+	}
+}
+
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct PackageTitle {
 	pub name: String,
 	pub version: String,
+}
+
+impl PackageTitle {
+	pub fn format_volume(&self, root: &Path) -> PathBuf {
+		root.join(&self.name)
+	}
 }
 
 impl std::fmt::Display for PackageTitle {
