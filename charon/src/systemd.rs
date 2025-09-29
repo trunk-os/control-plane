@@ -228,7 +228,8 @@ Alias=podman-test-0.0.2.service
 "#,
 		);
 		if let Some(buckle_info) = buckle_info {
-			let _ = buckle::testutil::destroy_zpool("charon-test-unit-names", Some(&buckle_info.2));
+			let _ =
+				buckle::testutil::destroy_zpool("charon-test-unit-contents", Some(&buckle_info.2));
 		}
 	}
 }
