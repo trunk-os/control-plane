@@ -85,14 +85,9 @@ pub(crate) async fn log(
 //
 
 pub(crate) async fn zfs_list(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Cbor(filter): Cbor<String>,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	Cbor(filter): Cbor<Option<String>>,
 ) -> Result<CborOut<Vec<ZFSStat>>> {
-	let filter = if filter.is_empty() {
-		None
-	} else {
-		Some(filter)
-	};
-
 	Ok(CborOut(state.buckle.zfs().await?.list(filter).await?))
 }
 

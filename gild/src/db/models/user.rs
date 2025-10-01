@@ -46,6 +46,7 @@ pub(crate) struct User {
 	#[validate(length(min = 10, max = 20))]
 	pub phone: Option<String>,
 
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub deleted_at: Option<chrono::DateTime<chrono::Local>>,
 
 	#[welds(ignore)]
