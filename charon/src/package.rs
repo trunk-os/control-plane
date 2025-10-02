@@ -18,8 +18,8 @@ use std::path::{Path, PathBuf};
 // get to that eventually.
 //
 
-const PACKAGE_SUBPATH: &str = "packages";
-const INSTALLED_SUBPATH: &str = "installed";
+pub(crate) const PACKAGE_SUBPATH: &str = "packages";
+pub(crate) const INSTALLED_SUBPATH: &str = "installed";
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SourcePackage {

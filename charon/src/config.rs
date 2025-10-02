@@ -1,4 +1,4 @@
-use crate::{Registry, SYSTEMD_SERVICE_ROOT};
+use crate::{INSTALLED_SUBPATH, Registry, SYSTEMD_SERVICE_ROOT};
 use anyhow::{Result, anyhow};
 use serde::Deserialize;
 use std::path::PathBuf;
@@ -133,6 +133,14 @@ impl Config {
 					self.registry.path.to_string_lossy().to_string(),
 				])?;
 			}
+		}
+
+		if !std::fs::exists(&self.registry.path)? {
+			std::fs::create_dir_all(&self.registry.path)?;
+		}
+
+		if !std::fs::exists(&self.registry.path.join(INSTALLED_SUBPATH))? {
+			std::fs::create_dir_all(&self.registry.path.join(INSTALLED_SUBPATH))?;
 		}
 
 		Ok(())
