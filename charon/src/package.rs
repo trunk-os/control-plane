@@ -320,7 +320,7 @@ impl CompiledPackage {
 			.zfs()
 			.await?
 			.create_dataset(ZfsDataset {
-				name: self.title.to_string(),
+				name: self.title.name.clone(),
 				quota: None,
 			})
 			.await?;
@@ -331,7 +331,7 @@ impl CompiledPackage {
 					.zfs()
 					.await?
 					.create_dataset(ZfsDataset {
-						name: format!("{}/{}", self.title, volume.name),
+						name: format!("{}/{}", self.title.name, volume.name),
 						quota: Some(volume.size),
 					})
 					.await?;
@@ -340,7 +340,7 @@ impl CompiledPackage {
 					.zfs()
 					.await?
 					.create_volume(ZfsVolume {
-						name: format!("{}/{}", self.title, volume.name),
+						name: format!("{}/{}", self.title.name, volume.name),
 						size: volume.size,
 					})
 					.await?;
@@ -357,11 +357,11 @@ impl CompiledPackage {
 			client
 				.zfs()
 				.await?
-				.destroy(format!("{}/{}", self.title, volume.name))
+				.destroy(format!("{}/{}", self.title.name, volume.name))
 				.await?;
 		}
 
-		client.zfs().await?.destroy(self.title.to_string()).await?;
+		client.zfs().await?.destroy(self.title.name.clone()).await?;
 
 		Ok(())
 	}
