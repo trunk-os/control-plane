@@ -324,7 +324,7 @@ async fn installer() {
 		.control()
 		.await
 		.unwrap()
-		.uninstall("plex", "0.0.2")
+		.uninstall("plex", "0.0.2", true)
 		.await
 		.unwrap();
 

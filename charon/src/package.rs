@@ -1,7 +1,7 @@
 use crate::{
 	Config, Global, GlobalRegistry, PromptCollection, PromptResponses, ProtoLastRunState,
-	ProtoLoadState, ProtoPackageTitle, ProtoRuntimeState, ProtoStatus, ResponseRegistry,
-	SystemdUnit, TemplatedInput, proto_package_installed::ProtoInstallState,
+	ProtoLoadState, ProtoPackageTitle, ProtoRuntimeState, ProtoStatus, ProtoUninstallData,
+	ResponseRegistry, SystemdUnit, TemplatedInput, proto_package_installed::ProtoInstallState,
 };
 use anyhow::{Result, anyhow};
 use buckle::{
@@ -811,6 +811,23 @@ impl Registry {
 	#[inline]
 	pub fn globals(&self, package: &SourcePackage) -> Result<Global> {
 		package.globals()
+	}
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UninstallData {
+	pub name: String,
+	pub version: String,
+	pub purge: bool,
+}
+
+impl From<ProtoUninstallData> for UninstallData {
+	fn from(value: ProtoUninstallData) -> Self {
+		Self {
+			name: value.name,
+			version: value.version,
+			purge: value.purge,
+		}
 	}
 }
 

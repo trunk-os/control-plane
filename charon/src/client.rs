@@ -2,7 +2,7 @@ use crate::grpc::query_client::QueryClient as GRPCQueryClient;
 use crate::grpc::status_client::StatusClient as GRPCStatusClient;
 use crate::{
 	InputType, InstallStatus, PackageTitle, Prompt, PromptCollection, PromptResponses,
-	ProtoPromptResponses, ProtoType,
+	ProtoPromptResponses, ProtoType, ProtoUninstallData,
 };
 use crate::{ProtoPackageTitle, grpc::control_client::ControlClient as GRPCControlClient};
 use anyhow::Result;
@@ -69,11 +69,12 @@ impl ControlClient {
 		Ok(())
 	}
 
-	pub async fn uninstall(&mut self, name: &str, version: &str) -> Result<()> {
+	pub async fn uninstall(&mut self, name: &str, version: &str, purge: bool) -> Result<()> {
 		self.client
-			.uninstall(Request::new(ProtoPackageTitle {
+			.uninstall(Request::new(ProtoUninstallData {
 				name: name.to_string(),
 				version: version.to_string(),
+				purge,
 			}))
 			.await?;
 

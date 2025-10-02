@@ -114,6 +114,7 @@ mod systemd {
 mod packages {
 	use charon::{
 		Input, InputType, PackageTitle, Prompt, PromptCollection, PromptResponse, PromptResponses,
+		UninstallData,
 	};
 
 	use crate::{
@@ -344,11 +345,12 @@ mod packages {
 		);
 
 		client
-			.post::<PackageTitle, ()>(
+			.post::<UninstallData, ()>(
 				"/packages/uninstall",
-				PackageTitle {
+				UninstallData {
 					name: "podman-test".into(),
 					version: "0.0.1".into(),
+					purge: true,
 				},
 			)
 			.await

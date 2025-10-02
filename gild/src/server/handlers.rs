@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use axum::extract::{Path, State};
 use axum_serde::Cbor;
 use buckle::client::ZFSStat;
-use charon::PackageTitle;
+use charon::{PackageTitle, UninstallData};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
 use std::{collections::HashMap, ops::Deref, sync::Arc};
@@ -459,13 +459,13 @@ pub(crate) async fn install_package(
 
 pub(crate) async fn uninstall_package(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
-	Cbor(pkg): Cbor<charon::PackageTitle>,
+	Cbor(pkg): Cbor<UninstallData>,
 ) -> Result<CborOut<()>> {
 	state
 		.charon
 		.control()
 		.await?
-		.uninstall(&pkg.name, &pkg.version)
+		.uninstall(&pkg.name, &pkg.version, pkg.purge)
 		.await?;
 	Ok(CborOut(()))
 }

@@ -1,7 +1,7 @@
 use crate::{
 	Config, InputType, PromptResponses, ProtoPackageInstalled, ProtoPackageTitle,
 	ProtoPackageTitleList, ProtoPrompt, ProtoPromptResponses, ProtoPrompts, ProtoType,
-	ResponseRegistry, SystemdUnit,
+	ProtoUninstallData, ResponseRegistry, SystemdUnit,
 	control_server::{Control, ControlServer},
 	query_server::{Query, QueryServer},
 	status_server::{Status, StatusServer},
@@ -114,7 +114,7 @@ impl Control for Server {
 	}
 
 	async fn uninstall(
-		&self, title: tonic::Request<ProtoPackageTitle>,
+		&self, title: tonic::Request<ProtoUninstallData>,
 	) -> Result<tonic::Response<()>> {
 		let r = self.config.registry();
 		let title = title.into_inner();
@@ -130,11 +130,17 @@ impl Control for Server {
 			.await
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
-		pkg.deprovision(&self.config.buckle_socket)
-			.await
-			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+		if title.purge {
+			pkg.deprovision(&self.config.buckle_socket)
+				.await
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+		}
 
-		self.remove_unit(tonic::Request::new(title)).await?;
+		self.remove_unit(tonic::Request::new(ProtoPackageTitle {
+			name: title.name.clone(),
+			version: title.version.clone(),
+		}))
+		.await?;
 
 		Ok(tonic::Response::new(()))
 	}

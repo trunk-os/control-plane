@@ -8,10 +8,16 @@ service Status {
 
 service Control {
   rpc Install(ProtoPackageTitle)    returns (google.protobuf.Empty);
-  rpc Uninstall(ProtoPackageTitle)  returns (google.protobuf.Empty);
+  rpc Uninstall(ProtoUninstallData) returns (google.protobuf.Empty);
   rpc Installed(ProtoPackageTitle)  returns (ProtoPackageInstalled);
   rpc WriteUnit(ProtoPackageTitle)  returns (google.protobuf.Empty);
   rpc RemoveUnit(ProtoPackageTitle) returns (google.protobuf.Empty);
+}
+
+message ProtoUninstallData {
+  string name    = 1;
+  string version = 2;
+  bool   purge   = 3;
 }
 
 message ProtoPackageTitle {
