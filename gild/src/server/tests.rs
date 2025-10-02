@@ -322,16 +322,18 @@ mod packages {
 			.await
 			.unwrap();
 
-		client
-			.post::<PackageTitle, bool>(
-				"/packages/installed",
-				PackageTitle {
-					name: "podman-test".into(),
-					version: "0.0.1".into(),
-				},
-			)
-			.await
-			.unwrap();
+		assert!(
+			client
+				.post::<PackageTitle, bool>(
+					"/packages/installed",
+					PackageTitle {
+						name: "podman-test".into(),
+						version: "0.0.1".into(),
+					},
+				)
+				.await
+				.unwrap()
+		);
 
 		assert_eq!(
 			client

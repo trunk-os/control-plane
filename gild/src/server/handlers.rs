@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use axum::extract::{Path, State};
 use axum_serde::Cbor;
 use buckle::client::ZFSStat;
-use charon::{PackageTitle, UninstallData};
+use charon::{InstallStatus, PackageTitle, UninstallData};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
 use std::{collections::HashMap, ops::Deref, sync::Arc};
@@ -433,15 +433,16 @@ pub(crate) async fn installed(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
 	Cbor(pkg): Cbor<charon::PackageTitle>,
 ) -> Result<CborOut<bool>> {
-	Ok(CborOut(
-		state
-			.charon
-			.control()
-			.await?
-			.installed(&pkg.name, &pkg.version)
-			.await?
-			.is_some(),
-	))
+	match state
+		.charon
+		.control()
+		.await?
+		.installed(&pkg.name, &pkg.version)
+		.await?
+	{
+		Some(InstallStatus::Installed(_)) => Ok(CborOut(true)),
+		_ => Ok(CborOut(false)),
+	}
 }
 
 pub(crate) async fn install_package(
