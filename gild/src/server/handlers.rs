@@ -332,7 +332,6 @@ pub(crate) async fn me(
 // Systemd Controls
 //
 
-#[axum::debug_handler]
 pub(crate) async fn list_units(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
 	Cbor(filter): Cbor<Option<String>>,
