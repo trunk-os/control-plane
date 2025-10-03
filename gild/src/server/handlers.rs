@@ -1,11 +1,11 @@
 use super::{
 	ServerState,
-	axum_support::{MyCbor as Cbor, *},
+	axum_support::{MyCbor as Cbor, MyPath as Path, *},
 	messages::*,
 };
 use crate::db::models::{AuditLog, Session, User};
 use anyhow::anyhow;
-use axum::extract::{Path, State};
+use axum::extract::State;
 use buckle::client::ZFSStat;
 use charon::{InstallStatus, PackageTitle, UninstallData};
 use hmac::{Hmac, Mac};

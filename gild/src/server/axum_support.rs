@@ -2,7 +2,7 @@ use super::ServerState;
 use crate::db::models::{AuditLog, JWTClaims, Session, User};
 use anyhow::anyhow;
 use axum::{
-	extract::{FromRequest, FromRequestParts},
+	extract::{FromRequest, FromRequestParts, Path},
 	http::{StatusCode, request::Parts},
 	response::{IntoResponse, Response},
 };
@@ -78,6 +78,25 @@ where
 			.header("Content-Type", "application/cbor")
 			.body(axum::body::Body::from(buf.into_inner().to_vec()))
 			.unwrap()
+	}
+}
+
+pub(crate) struct MyPath<T>(pub T);
+impl<T> FromRequestParts<Arc<ServerState>> for MyPath<T>
+where
+	T: for<'de> serde::Deserialize<'de> + Send,
+{
+	type Rejection = AppError;
+
+	fn from_request_parts(
+		parts: &mut Parts, state: &Arc<ServerState>,
+	) -> impl Future<Output = std::result::Result<Self, Self::Rejection>> + Send {
+		async move {
+			match Path::from_request_parts(parts, state).await {
+				Ok(Path(x)) => Ok(MyPath(x)),
+				Err(e) => Err(AppError::from(e)),
+			}
+		}
 	}
 }
 
