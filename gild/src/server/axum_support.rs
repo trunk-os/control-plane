@@ -2,10 +2,11 @@ use super::ServerState;
 use crate::db::models::{AuditLog, JWTClaims, Session, User};
 use anyhow::anyhow;
 use axum::{
-	extract::FromRequestParts,
+	extract::{FromRequest, FromRequestParts},
 	http::{StatusCode, request::Parts},
 	response::{IntoResponse, Response},
 };
+use axum_serde::Cbor;
 use hmac::{Hmac, Mac};
 use jwt::{Header, Token, Verified, VerifyWithKey};
 use problem_details::ProblemDetails;
@@ -77,6 +78,26 @@ where
 			.header("Content-Type", "application/cbor")
 			.body(axum::body::Body::from(buf.into_inner().to_vec()))
 			.unwrap()
+	}
+}
+
+pub(crate) struct MyCbor<T>(pub T);
+
+impl<T> FromRequest<Arc<ServerState>> for MyCbor<T>
+where
+	T: for<'de> serde::Deserialize<'de>,
+{
+	type Rejection = AppError;
+
+	fn from_request(
+		req: axum::extract::Request, state: &Arc<ServerState>,
+	) -> impl Future<Output = std::result::Result<Self, Self::Rejection>> + Send {
+		async move {
+			match Cbor::from_request(req, state).await {
+				Ok(Cbor(x)) => Ok(MyCbor(x)),
+				Err(e) => Err(AppError::from(e)),
+			}
+		}
 	}
 }
 
