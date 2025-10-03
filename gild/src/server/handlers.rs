@@ -279,6 +279,10 @@ pub(crate) async fn update_user(
 
 		user.plaintext_password = None; // NOTE: so it doesn't appear in the logging that follows
 
+		// NOTE: the unfortunate situation here is that you can't just "clear" a field right now. I'll
+		// have to get to that later. Setting any of these fields to null will just get the original
+		// merged in. Use reactivate_user and remove_user for toggling deleted_at status anyway.
+
 		if user.deleted_at.is_none() {
 			user.deleted_at = orig.deleted_at
 		}
