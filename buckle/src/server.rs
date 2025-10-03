@@ -109,7 +109,7 @@ impl Systemd for Server {
 		Ok(Response::new(()))
 	}
 
-	// FIXME: this really is only a streaming method because of memory usage concnerns. Maybe
+	// FIXME: this really is only a streaming method because of memory usage concerns. Maybe
 	// another way would be better
 	async fn unit_log(
 		&self, params: Request<GrpcLogParams>,

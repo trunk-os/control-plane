@@ -582,4 +582,24 @@ mod tests {
 		}
 		assert!(found, "did not find item in systemd to check")
 	}
+
+	#[tokio::test]
+	async fn test_log() {
+		let systemd = Systemd::new_system().await.unwrap();
+		let mut r = systemd
+			.log("multi-user.target", 10, None, None)
+			.await
+			.unwrap();
+
+		let mut i = 0;
+
+		while let Some(item) = r.recv().await {
+			let unit = item.get("UNIT");
+			assert!(unit.is_some());
+			assert_eq!(unit.unwrap(), "multi-user.target");
+			i += 1;
+		}
+
+		assert_eq!(i, 10);
+	}
 }
