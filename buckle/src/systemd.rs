@@ -483,7 +483,6 @@ impl Systemd {
 		let name = name.to_string();
 		tokio::spawn(async move {
 			let mut journal = systemd::journal::OpenOptions::default()
-				.local_only(true)
 				.system(true)
 				.all_namespaces(true)
 				.open()
