@@ -103,7 +103,7 @@ impl Server {
 								.allow_private_network(true),
 						),
 				),
-			config: config.clone(),
+			config,
 		})
 	}
 
