@@ -157,6 +157,34 @@ impl TestClient {
 		}
 	}
 
+	pub async fn patch<T>(&self, path: &str) -> Result<T>
+	where
+		T: for<'de> Deserialize<'de> + DeserializeOwned + Default,
+	{
+		let mut req = self.client.patch(&format!("{}{}", self.baseurl, path));
+
+		if let Some(token) = &self.token {
+			req = req.header("Authorization", &format!("Bearer {}", token))
+		}
+
+		let resp = req.send().await?;
+
+		if resp.status() != 200 {
+			return Err(anyhow!(
+				"{}",
+				String::from_utf8(resp.bytes().await?.to_vec())?
+			));
+		}
+
+		let byt = resp.bytes().await?;
+
+		if byt.len() > 0 {
+			Ok(ciborium::from_reader(std::io::Cursor::new(byt))?)
+		} else {
+			Ok(T::default())
+		}
+	}
+
 	pub async fn delete<T>(&self, path: &str) -> Result<T>
 	where
 		T: for<'de> Deserialize<'de> + DeserializeOwned + Default,

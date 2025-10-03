@@ -786,7 +786,7 @@ mod user {
 			);
 		}
 
-		for item in created.into_iter() {
+		for item in created.clone().into_iter() {
 			client
 				.delete::<()>(&format!("/user/{}", item.id))
 				.await
@@ -816,6 +816,36 @@ mod user {
 				.await
 				.is_err()
 		);
+
+		// this login should still work
+		client
+			.login(Authentication {
+				username: "test-login".into(),
+				password: "test-password".into(),
+			})
+			.await
+			.unwrap();
+
+		// restore users and check deleted state
+		for item in created.clone().into_iter() {
+			client
+				.patch::<()>(&format!("/user/{}", item.id))
+				.await
+				.unwrap();
+		}
+
+		let list = client.post::<(), Vec<User>>("/users", ()).await.unwrap();
+		assert_eq!(list.len(), table.len() + 1);
+
+		// check that our accounts actually got deleted
+		let mut count = 0;
+		for item in list {
+			if item.deleted_at.is_none() {
+				count += 1;
+			}
+		}
+
+		assert_eq!(count, created.len() + 1);
 	}
 }
 

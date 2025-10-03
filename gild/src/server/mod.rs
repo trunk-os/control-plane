@@ -68,7 +68,10 @@ impl Server {
 				.route("/users", put(create_user).post(list_users))
 				.route(
 					"/user/{id}",
-					delete(remove_user).get(get_user).post(update_user),
+					delete(remove_user)
+						.get(get_user)
+						.post(update_user)
+						.patch(reactivate_user),
 				)
 				.route("/session/login", post(login))
 				.route("/session/me", get(me))

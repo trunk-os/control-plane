@@ -191,6 +191,23 @@ pub(crate) async fn create_user(
 	Ok(state.with_log(Ok(CborOut(inner)), log))
 }
 
+pub(crate) async fn reactivate_user(
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	Path(id): Path<u32>,
+) -> Result<WithLog<()>> {
+	if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
+		user.deleted_at = None;
+		let log = log
+			.with_entry("Re-activating user")
+			.with_data(user.clone())?
+			.clone();
+		user.save(state.db.handle()).await?;
+		Ok(state.with_log(Ok(()), log))
+	} else {
+		Err(anyhow!("invalid user").into())
+	}
+}
+
 pub(crate) async fn remove_user(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
 	Path(id): Path<u32>,
@@ -198,7 +215,7 @@ pub(crate) async fn remove_user(
 	if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
 		user.deleted_at = Some(chrono::Local::now());
 		let log = log
-			.with_entry("Removing user")
+			.with_entry("Deactivating user")
 			.with_data(user.clone())?
 			.clone();
 		user.save(state.db.handle()).await?;
