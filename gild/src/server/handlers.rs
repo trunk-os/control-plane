@@ -263,19 +263,41 @@ pub(crate) async fn update_user(
 	State(state): State<Arc<ServerState>>, Path(id): Path<u32>, Account(_): Account<User>,
 	Log(mut log): Log, Cbor(mut user): Cbor<User>,
 ) -> Result<WithLog<()>> {
-	if User::find_by_id(state.db.handle(), id).await?.is_some() {
+	if let Some(orig) = User::find_by_id(state.db.handle(), id).await? {
 		// if we got the record, the id is correct
 		user.id = id;
-		user.validate()?;
+		if user.username.is_empty() {
+			user.username = orig.username.clone();
+		}
 
 		// crypt the plaintext password if it is set
 		if let Some(password) = &user.plaintext_password {
 			user.set_password(password.clone())?;
+		} else {
+			user.password = orig.password.clone()
 		}
 
 		user.plaintext_password = None; // NOTE: so it doesn't appear in the logging that follows
 
+		if user.deleted_at.is_none() {
+			user.deleted_at = orig.deleted_at
+		}
+
+		if user.realname.is_none() {
+			user.realname = orig.realname.clone()
+		}
+
+		if user.phone.is_none() {
+			user.phone = orig.phone.clone()
+		}
+
+		if user.email.is_none() {
+			user.email = orig.email.clone()
+		}
+
 		let log = log.with_entry("Modifying user").with_data(&user)?.clone();
+
+		user.validate()?;
 
 		// welds doesn't realize the fields have already changed, these two lines force it to see
 		// it.
