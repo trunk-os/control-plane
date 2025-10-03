@@ -67,7 +67,10 @@ mod systemd {
 
 		assert!(
 			client
-				.post::<Option<String>, buckle::systemd::Unit>("/systemd/log", None)
+				.post::<Option<LogParameters>, Vec<buckle::systemd::LogMessage>>(
+					"/systemd/log",
+					None
+				)
 				.await
 				.is_err()
 		);
@@ -103,6 +106,22 @@ mod systemd {
 			.unwrap();
 
 		assert_eq!(list.len(), 1);
+
+		let entries = client
+			.post::<Option<LogParameters>, Vec<buckle::systemd::LogMessage>>(
+				"/systemd/log",
+				Some(LogParameters {
+					name: "multi-user.target".into(),
+					count: 10,
+					cursor: None,
+					direction: None,
+				}),
+			)
+			.await
+			.unwrap();
+
+		assert!(entries.len() > 0);
+		assert!(entries.len() < 11);
 	}
 
 	#[tokio::test]

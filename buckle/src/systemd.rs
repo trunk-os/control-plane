@@ -12,7 +12,7 @@ use crate::grpc::{
 	UnitLoadState, UnitRuntimeState,
 };
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct LogMessage {
 	message: String,
 	time: SystemTime,
