@@ -18,7 +18,7 @@ use charon::Client as CharonClient;
 use http::{Method, header::*};
 use std::sync::Arc;
 use tower::ServiceBuilder;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest};
 use tracing::Level;
 
@@ -101,7 +101,8 @@ impl Server {
 									Method::TRACE,
 									Method::OPTIONS,
 								])
-								.allow_origin(Any)
+								.allow_credentials(true)
+								.allow_origin(AllowOrigin::mirror_request())
 								.allow_headers([CONTENT_TYPE, ACCEPT, AUTHORIZATION])
 								.allow_private_network(true),
 						),
