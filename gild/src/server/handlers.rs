@@ -369,8 +369,8 @@ pub(crate) async fn login(
 }
 
 pub(crate) async fn me(
-	State(_): State<Arc<ServerState>>, Account(user): Account<User>,
-) -> Result<CborOut<User>> {
+	State(_): State<Arc<ServerState>>, Account(user): Account<Option<User>>,
+) -> Result<CborOut<Option<User>>> {
 	Ok(CborOut(user))
 }
 
