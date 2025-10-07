@@ -64,23 +64,14 @@ pub(crate) async fn log(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
 	Cbor(pagination): Cbor<Pagination>,
 ) -> Result<CborOut<Vec<AuditLog>>> {
-	let mut selector = AuditLog::all();
+	let per_page: i64 = pagination.per_page.unwrap_or(20).into();
+	let page: i64 = pagination.page.unwrap_or(0).into();
+	let query = AuditLog::all()
+		.order_by_desc(|x| x.id)
+		.limit(per_page)
+		.offset(page * per_page);
 
-	if let Some(since) = pagination.since {
-		selector = selector.where_col(|c| c.time.gt(since));
-	}
-
-	if let Some(page) = pagination.page {
-		selector = selector
-			.offset(page.into())
-			.limit(pagination.per_page.unwrap_or(20).into());
-	} else if let Some(per_page) = pagination.per_page {
-		selector = selector.limit(per_page.into())
-	}
-
-	Ok(CborOut(
-		selector.run(state.db.handle()).await?.into_inners(),
-	))
+	Ok(CborOut(query.run(state.db.handle()).await?.into_inners()))
 }
 
 //
@@ -229,22 +220,22 @@ pub(crate) async fn list_users(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
 	Cbor(pagination): Cbor<Option<Pagination>>,
 ) -> Result<CborOut<Vec<User>>> {
+	let query = User::all().order_by_asc(|x| x.id);
+
 	if let Some(pagination) = pagination {
-		let mut query = User::all();
+		let per_page: i64 = pagination.per_page.unwrap_or(20).into();
+		let page: i64 = pagination.page.unwrap_or(0).into();
 
-		if let Some(per_page) = pagination.per_page {
-			query = query.limit(per_page.into());
-		}
-
-		if let Some(page) = pagination.page {
-			query = query.offset((page * pagination.per_page.unwrap_or(20)).into());
-		}
-
-		Ok(CborOut(query.run(state.db.handle()).await?.into_inners()))
-	} else {
 		Ok(CborOut(
-			User::all().run(state.db.handle()).await?.into_inners(),
+			query
+				.limit(per_page)
+				.offset(page * per_page)
+				.run(state.db.handle())
+				.await?
+				.into_inners(),
 		))
+	} else {
+		Ok(CborOut(query.run(state.db.handle()).await?.into_inners()))
 	}
 }
 
