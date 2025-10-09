@@ -7,7 +7,7 @@ use crate::db::models::{AuditLog, Session, User};
 use anyhow::anyhow;
 use axum::extract::State;
 use buckle::client::ZFSStat;
-use charon::{InstallStatus, PackageTitle, UninstallData};
+use charon::{InstallStatus, PackageStatus, PackageTitle, UninstallData};
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
 use std::{collections::HashMap, ops::Deref, sync::Arc};
@@ -461,7 +461,7 @@ pub(crate) async fn list_installed(
 
 pub(crate) async fn list_packages(
 	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
-) -> Result<CborOut<Vec<PackageTitle>>> {
+) -> Result<CborOut<Vec<PackageStatus>>> {
 	Ok(CborOut(state.charon.query().await?.list().await?))
 }
 

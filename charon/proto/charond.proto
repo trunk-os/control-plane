@@ -25,6 +25,11 @@ message ProtoPackageTitle {
   string version     = 2;
 }
 
+message ProtoPackageStatus {
+  ProtoPackageTitle title     = 1;
+  bool              installed = 2;
+}
+
 message ProtoPrompts {
   repeated ProtoPrompt prompts = 1;
 }
@@ -55,6 +60,10 @@ message ProtoPromptResponses {
 
 message ProtoPackageTitleList {
   repeated ProtoPackageTitle list = 1;
+}
+
+message ProtoPackageStatusList {
+  repeated ProtoPackageStatus list = 1;
 }
 
 enum ProtoLoadState {
@@ -100,5 +109,5 @@ service Query {
   rpc GetResponses(ProtoPackageTitle)      returns (ProtoPromptResponses);
   rpc SetResponses(ProtoPromptResponses)   returns (google.protobuf.Empty);
   rpc ListInstalled(google.protobuf.Empty) returns (ProtoPackageTitleList);
-  rpc List(google.protobuf.Empty)          returns (ProtoPackageTitleList);
+  rpc List(google.protobuf.Empty)          returns (ProtoPackageStatusList);
 }

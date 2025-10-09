@@ -1,8 +1,8 @@
 use crate::grpc::query_client::QueryClient as GRPCQueryClient;
 use crate::grpc::status_client::StatusClient as GRPCStatusClient;
 use crate::{
-	InputType, InstallStatus, PackageTitle, Prompt, PromptCollection, PromptResponses,
-	ProtoPromptResponses, ProtoType, ProtoUninstallData,
+	InputType, InstallStatus, PackageStatus, PackageTitle, Prompt, PromptCollection,
+	PromptResponses, ProtoPromptResponses, ProtoType, ProtoUninstallData,
 };
 use crate::{ProtoPackageTitle, grpc::control_client::ControlClient as GRPCControlClient};
 use anyhow::Result;
@@ -137,15 +137,20 @@ impl QueryClient {
 		Ok(v)
 	}
 
-	pub async fn list(&mut self) -> Result<Vec<PackageTitle>> {
+	pub async fn list(&mut self) -> Result<Vec<PackageStatus>> {
 		let list = self.client.list(Request::new(())).await?.into_inner();
 
 		let mut v = Vec::new();
 
 		for item in list.list {
-			v.push(PackageTitle {
-				name: item.name,
-				version: item.version,
+			let title = item.title.unwrap_or_default();
+
+			v.push(PackageStatus {
+				title: PackageTitle {
+					name: title.name,
+					version: title.version,
+				},
+				installed: item.installed,
 			})
 		}
 

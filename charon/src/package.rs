@@ -412,6 +412,12 @@ impl Ord for PackageTitle {
 	}
 }
 
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
+pub struct PackageStatus {
+	pub title: PackageTitle,
+	pub installed: bool,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Source {
 	#[serde(rename = "url")]
@@ -679,7 +685,9 @@ impl Registry {
 		self.root.clone()
 	}
 
-	pub fn list(&self) -> Result<Vec<PackageTitle>> {
+	pub fn list(&self) -> Result<Vec<PackageStatus>> {
+		let installed = self.installed()?;
+
 		let mut v = Vec::new();
 
 		let mut items = std::fs::read_dir(self.root.join(PACKAGE_SUBPATH))?
@@ -715,10 +723,19 @@ impl Registry {
 			for item in inner.iter().rev().collect::<Vec<&PathBuf>>() {
 				let version = item.file_stem().unwrap().to_str().unwrap();
 
-				v.push(PackageTitle {
+				let title = PackageTitle {
 					name: name.to_string(),
 					version: version.to_string(),
-				});
+				};
+
+				let is_installed = installed
+					.iter()
+					.find(|x| x.name == title.name && x.version == title.version)
+					.is_some();
+				v.push(PackageStatus {
+					title,
+					installed: is_installed,
+				})
 			}
 		}
 

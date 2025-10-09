@@ -1,7 +1,8 @@
 use crate::{
-	Config, InputType, PromptResponses, ProtoPackageInstalled, ProtoPackageTitle,
-	ProtoPackageTitleList, ProtoPrompt, ProtoPromptResponses, ProtoPrompts, ProtoType,
-	ProtoUninstallData, ResponseRegistry, SystemdUnit,
+	Config, InputType, PromptResponses, ProtoPackageInstalled, ProtoPackageStatus,
+	ProtoPackageStatusList, ProtoPackageTitle, ProtoPackageTitleList, ProtoPrompt,
+	ProtoPromptResponses, ProtoPrompts, ProtoType, ProtoUninstallData, ResponseRegistry,
+	SystemdUnit,
 	control_server::{Control, ControlServer},
 	query_server::{Query, QueryServer},
 	status_server::{Status, StatusServer},
@@ -249,7 +250,7 @@ impl Query for Server {
 
 	async fn list(
 		&self, _empty: tonic::Request<()>,
-	) -> Result<tonic::Response<ProtoPackageTitleList>> {
+	) -> Result<tonic::Response<ProtoPackageStatusList>> {
 		let r = self.config.registry();
 
 		let list = r
@@ -259,13 +260,16 @@ impl Query for Server {
 		let mut v = Vec::new();
 
 		for item in list {
-			v.push(ProtoPackageTitle {
-				name: item.name,
-				version: item.version,
+			v.push(ProtoPackageStatus {
+				title: Some(ProtoPackageTitle {
+					name: item.title.name,
+					version: item.title.version,
+				}),
+				installed: item.installed,
 			})
 		}
 
-		Ok(tonic::Response::new(ProtoPackageTitleList { list: v }))
+		Ok(tonic::Response::new(ProtoPackageStatusList { list: v }))
 	}
 
 	async fn get_responses(

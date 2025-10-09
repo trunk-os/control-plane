@@ -1,6 +1,6 @@
 use crate::{
-	Client, Config, Input, InputType, PackageTitle, Prompt, PromptCollection, PromptResponse,
-	PromptResponses, RegistryConfig, Server,
+	Client, Config, Input, InputType, PackageStatus, PackageTitle, Prompt, PromptCollection,
+	PromptResponse, PromptResponses, RegistryConfig, Server,
 };
 use std::path::PathBuf;
 use tempfile::{NamedTempFile, tempdir};
@@ -258,9 +258,12 @@ async fn list() {
 
 	for (name, versions) in table {
 		for version in versions {
-			v.push(PackageTitle {
-				name: name.into(),
-				version: version.into(),
+			v.push(PackageStatus {
+				title: PackageTitle {
+					name: name.into(),
+					version: version.into(),
+				},
+				installed: false,
 			})
 		}
 	}
