@@ -505,6 +505,17 @@ impl Controller {
 		)?)?)
 	}
 
+	fn exists(&self, name: String) -> Result<bool> {
+		let items = self.list()?;
+		let mut items = items.datasets.values();
+
+		Ok(if let Some(found) = items.find(|x| &x.name == &name) {
+			name == found.name
+		} else {
+			false
+		})
+	}
+
 	fn destroy(&self, pool: &str, name: &str) -> Result<()> {
 		Self::run(
 			"zfs",
@@ -521,6 +532,10 @@ impl Controller {
 	fn create_dataset(
 		&self, pool: &str, name: &str, options: Option<CommandOptions>,
 	) -> Result<()> {
+		if self.exists(format!("{}/{}", pool, name))? {
+			return Ok(());
+		}
+
 		let mut args = vec!["create".to_string(), format!("{}/{}", pool, name)];
 
 		if let Some(options) = options {
@@ -614,6 +629,10 @@ impl Controller {
 		size: u64, // 640k aughta be enough for anybody
 		options: Option<CommandOptions>,
 	) -> Result<()> {
+		if self.exists(format!("{}/{}", pool, name))? {
+			return Ok(());
+		}
+
 		let mut args = vec![
 			"create".to_string(),
 			"-V".to_string(),
@@ -650,6 +669,14 @@ mod tests {
 				quota: None,
 			})
 			.unwrap();
+			// repeated creates should not fail
+			for _ in 0..10 {
+				pool.create_dataset(&crate::zfs::Dataset {
+					name: "dataset".to_string(),
+					quota: None,
+				})
+				.unwrap();
+			}
 			let list = pool.list(None).unwrap();
 			assert_eq!(list.len(), 1);
 			assert_eq!(list[0].kind, ZFSKind::Dataset);
@@ -674,6 +701,15 @@ mod tests {
 				size: 100 * 1024 * 1024,
 			})
 			.unwrap();
+
+			for _ in 0..10 {
+				// repeated creates should not fail
+				pool.create_volume(&crate::zfs::Volume {
+					name: "volume".to_string(),
+					size: 100 * 1024 * 1024,
+				})
+				.unwrap();
+			}
 			let list = pool.list(None).unwrap();
 			assert_eq!(list.len(), 2);
 
