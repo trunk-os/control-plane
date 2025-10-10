@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use http::{HeaderMap, HeaderValue, Uri};
+use http::Uri;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 use welds::{WeldsModel, state::DbState};
@@ -26,7 +26,6 @@ pub struct AuditLog {
 	pub time: chrono::DateTime<chrono::Local>,
 	pub entry: String,
 	pub endpoint: String,
-	pub ip: String,
 	pub data: String,
 	pub error: Option<String>,
 }
@@ -40,20 +39,6 @@ impl AuditLog {
 
 	pub fn from_uri(&mut self, uri: Uri) -> &mut Self {
 		self.endpoint = uri.to_string();
-		self
-	}
-
-	pub fn from_headers(&mut self, headers: HeaderMap<HeaderValue>) -> &mut Self {
-		self.ip = headers
-			.get("X-Real-IP")
-			.map(|e| e.to_str().unwrap())
-			.unwrap_or_else(|| {
-				headers
-					.get("X-Forwarded-For")
-					.map(|e| e.to_str().unwrap().split("; ").next().unwrap_or_default())
-					.unwrap_or_else(|| "")
-			})
-			.to_string();
 		self
 	}
 

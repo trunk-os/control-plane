@@ -218,12 +218,7 @@ impl FromRequestParts<Arc<ServerState>> for Log {
 	async fn from_request_parts(
 		parts: &mut Parts, state: &Arc<ServerState>,
 	) -> core::result::Result<Self, Self::Rejection> {
-		let mut this = Self(
-			AuditLog::builder()
-				.from_uri(parts.uri.clone())
-				.from_headers(parts.headers.clone())
-				.clone(),
-		);
+		let mut this = Self(AuditLog::builder().from_uri(parts.uri.clone()).clone());
 
 		if let Some(user) = read_jwt(parts, state).await.unwrap_or_default() {
 			this.0 = this.0.from_user(&user).clone();

@@ -21,7 +21,6 @@ async fn audit_log() {
 	let mut log = AuditLog {
 		user_id: Some(1),
 		endpoint: "http://localhost".into(),
-		ip: "127.0.0.1".into(),
 		..Default::default()
 	};
 
