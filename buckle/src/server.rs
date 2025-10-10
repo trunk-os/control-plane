@@ -69,6 +69,17 @@ impl Systemd for Server {
 		))
 	}
 
+	async fn stop_unit(&self, req: tonic::Request<GrpcUnitName>) -> Result<Response<()>> {
+		Ok(Response::new(
+			crate::systemd::Systemd::new_system()
+				.await
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
+				.stop(req.into_inner().name)
+				.await
+				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
+		))
+	}
+
 	async fn reload(&self, _: tonic::Request<()>) -> Result<Response<()>> {
 		Ok(Response::new(
 			crate::systemd::Systemd::new_system()

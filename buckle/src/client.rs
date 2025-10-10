@@ -65,6 +65,14 @@ impl SystemdClient {
 			.await?;
 		Ok(())
 	}
+
+	pub async fn stop_unit(&mut self, name: String) -> Result<()> {
+		self.client
+			.stop_unit(Request::new(GrpcUnitName { name }))
+			.await?;
+		Ok(())
+	}
+
 	pub async fn reload(&mut self) -> Result<()> {
 		self.client.reload(()).await?;
 		Ok(())

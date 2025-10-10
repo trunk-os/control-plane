@@ -176,4 +176,5 @@ service Systemd {
   rpc UnitLog(GRPCLogParams)        returns (stream GRPCLogMessage);
   rpc Reload(google.protobuf.Empty) returns (google.protobuf.Empty);
   rpc StartUnit(GRPCUnitName)       returns (google.protobuf.Empty);
+  rpc StopUnit(GRPCUnitName)        returns (google.protobuf.Empty);
 }

@@ -353,6 +353,12 @@ impl CompiledPackage {
 	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
+		let _ = client
+			.systemd()
+			.await?
+			.stop_unit(self.title.to_string())
+			.await;
+
 		for volume in &self.storage.volumes {
 			client
 				.zfs()
