@@ -377,11 +377,16 @@ pub(crate) async fn list_units(
 }
 
 pub(crate) async fn set_unit(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
 	Cbor(settings): Cbor<buckle::systemd::UnitSettings>,
-) -> Result<CborOut<()>> {
+) -> Result<WithLog<CborOut<()>>> {
+	let log = log
+		.from_user(&user)
+		.with_entry("Update systemd unit")
+		.with_data(&settings)?
+		.clone();
 	state.buckle.systemd().await?.set_unit(settings).await?;
-	Ok(CborOut(()))
+	Ok(state.with_log(Ok(CborOut(())), log))
 }
 
 pub(crate) async fn unit_log(
@@ -427,16 +432,21 @@ pub(crate) async fn get_prompts(
 }
 
 pub(crate) async fn set_responses(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
 	Cbor(responses): Cbor<PromptResponsesWithName>,
-) -> Result<CborOut<()>> {
+) -> Result<WithLog<CborOut<()>>> {
+	let log = log
+		.from_user(&user)
+		.with_entry("Set package responses")
+		.with_data(&responses)?
+		.clone();
 	state
 		.charon
 		.query()
 		.await?
 		.set_responses(&responses.name, responses.responses)
 		.await?;
-	Ok(CborOut(()))
+	Ok(state.with_log(Ok(CborOut(())), log))
 }
 
 pub(crate) async fn get_responses(
@@ -482,27 +492,38 @@ pub(crate) async fn installed(
 }
 
 pub(crate) async fn install_package(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
 	Cbor(pkg): Cbor<charon::PackageTitle>,
-) -> Result<CborOut<()>> {
+) -> Result<WithLog<CborOut<()>>> {
+	let log = log
+		.from_user(&user)
+		.with_entry("Install package")
+		.with_data(&pkg)?
+		.clone();
 	state
 		.charon
 		.control()
 		.await?
 		.install(&pkg.name, &pkg.version)
 		.await?;
-	Ok(CborOut(()))
+
+	Ok(state.with_log(Ok(CborOut(())), log))
 }
 
 pub(crate) async fn uninstall_package(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
 	Cbor(pkg): Cbor<UninstallData>,
-) -> Result<CborOut<()>> {
+) -> Result<WithLog<CborOut<()>>> {
+	let log = log
+		.from_user(&user)
+		.with_entry("Uninstall package")
+		.with_data(&pkg)?
+		.clone();
 	state
 		.charon
 		.control()
 		.await?
 		.uninstall(&pkg.name, &pkg.version, pkg.purge)
 		.await?;
-	Ok(CborOut(()))
+	Ok(state.with_log(Ok(CborOut(())), log))
 }
