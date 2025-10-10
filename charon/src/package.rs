@@ -355,27 +355,21 @@ impl CompiledPackage {
 
 		let unit_name = format!("{}.service", self.title.to_string());
 
-		let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
-
-		let mut iters = 0;
-
 		'wait: loop {
 			match client.systemd().await?.unit_info(unit_name.clone()).await {
 				Ok(status) => match status.status.last_run_state {
 					LastRunState::Dead | LastRunState::Failed | LastRunState::Exited => {
 						// if we had to try a few times, the process probably needs some time to stop behind
 						// the scenes.
-						if iters > 0 {
-							tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-						}
 						break 'wait;
 					}
-					_ => {}
+					_ => {
+						let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
+						tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+					}
 				},
 				Err(_) => break 'wait,
 			}
-			iters += 1;
-			tokio::time::sleep(std::time::Duration::from_millis(100)).await;
 		}
 
 		for volume in &self.storage.volumes {
