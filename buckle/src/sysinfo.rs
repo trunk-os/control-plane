@@ -23,18 +23,23 @@ impl Default for Info {
 	fn default() -> Self {
 		debug!("Collecting system statistics");
 		let time = std::time::Instant::now();
-		let s = System::new_all();
-		let la = sysinfo::System::load_average();
+		let mut s = System::new_all();
+
+		s.refresh_cpu_usage();
+		std::thread::sleep(std::time::Duration::from_millis(200));
+		s.refresh_cpu_usage();
+
+		let la = System::load_average();
 		let la = [la.one, la.five, la.fifteen];
 
 		let this = Self {
-			uptime: sysinfo::System::uptime(),
+			uptime: System::uptime(),
 			available_memory: s.available_memory(),
 			total_memory: s.total_memory(),
 			cpus: s.cpus().len(),
 			cpu_usage: s.global_cpu_usage(),
-			host_name: sysinfo::System::host_name().unwrap_or("trunk".into()),
-			kernel_version: sysinfo::System::kernel_version().unwrap_or("unknown".into()),
+			host_name: System::host_name().unwrap_or("trunk".into()),
+			kernel_version: System::kernel_version().unwrap_or("unknown".into()),
 			load_average: la,
 			processes: s.processes().len(),
 			total_disk: sysinfo::Disks::new_with_refreshed_list()
@@ -53,7 +58,9 @@ impl Default for Info {
 
 		trace!(
 			"Collecting system statistics took: {}",
-			(std::time::Instant::now() - time).fancy_duration(),
+			// 200ms is for the time sleeping
+			(std::time::Instant::now() - std::time::Duration::from_millis(200) - time)
+				.fancy_duration(),
 		);
 
 		this
