@@ -356,7 +356,7 @@ impl CompiledPackage {
 		let _ = client
 			.systemd()
 			.await?
-			.stop_unit(self.title.to_string())
+			.stop_unit(format!("{}.service", self.title.to_string()))
 			.await;
 
 		for volume in &self.storage.volumes {
