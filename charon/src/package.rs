@@ -361,6 +361,7 @@ impl CompiledPackage {
 			match client.systemd().await?.unit_info(unit_name.clone()).await {
 				Ok(status) => match status.status.last_run_state {
 					LastRunState::Dead | LastRunState::Failed | LastRunState::Exited => {
+						tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 						break 'wait;
 					}
 					_ => {}
