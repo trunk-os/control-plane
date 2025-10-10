@@ -1,4 +1,3 @@
-#![allow(unused)]
 use easy_upnp::{PortMappingProtocol, UpnpConfig};
 use serde::{Deserialize, Serialize};
 

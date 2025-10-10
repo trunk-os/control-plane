@@ -160,9 +160,7 @@ impl Control for Server {
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
-			self.config
-				.buckle()
-				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
+			self.config.buckle_socket.clone(),
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),
@@ -208,9 +206,7 @@ impl Control for Server {
 			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
 
 		let unit = SystemdUnit::new(
-			self.config
-				.buckle()
-				.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?,
+			self.config.buckle_socket.clone(),
 			pkg,
 			self.config.systemd_root.clone(),
 			self.config.charon_path.clone(),

@@ -78,7 +78,7 @@ async fn test_ping() {
 async fn test_write_unit_real() {
 	// real mode. validate written. this test also reloads systemd (which doesn't pick up anything
 	// new because of the temporary path to write to) so it needs to be run as root.
-	let (_, socket, systemd_path, buckle_info) =
+	let (config, socket, systemd_path, buckle_info) =
 		start_server(false, Some("write-unit-real".into())).await;
 	let client = Client::new(socket).unwrap();
 
@@ -111,14 +111,16 @@ async fn test_write_unit_real() {
 Description=Charon launcher for podman-test, version 0.0.2
 
 [Service]
-ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
-ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
+ExecStart=/usr/bin/charon -b {} -r testdata/registry launch podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
+ExecStop=/usr/bin/charon -b {} -r testdata/registry stop podman-test 0.0.2 /buckle-test-write-unit-real/podman-test
 Restart=always
 TimeoutSec=300
 
 [Install]
 Alias=podman-test-0.0.2.service
-"#
+"#,
+			config.buckle_socket.display(),
+			config.buckle_socket.display(),
 		)
 	);
 

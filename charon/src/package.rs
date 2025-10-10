@@ -269,8 +269,7 @@ impl CompiledPackage {
 		&self, config: Config, systemd_root: Option<PathBuf>, charon_path: Option<PathBuf>,
 	) -> SystemdUnit {
 		SystemdUnit::new(
-			// FIXME: remove this expect when the time is right
-			config.buckle().expect("Could not connect to buckle"),
+			config.buckle_socket,
 			self.clone(),
 			systemd_root,
 			charon_path,

@@ -122,12 +122,30 @@ async fn main() -> Result<()> {
 		}
 		Commands::Launch(l_args) => {
 			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
-			let command = generate_command(
-				r.load(&l_args.package_name, &l_args.package_version)?
-					.compile()
-					.await?,
-				l_args.volume_root,
-			)?;
+			let pkg = r
+				.load(&l_args.package_name, &l_args.package_version)?
+				.compile()
+				.await?;
+
+			let p = pkg.clone();
+			let buckle_socket = args.buckle_socket.expect("Buckle socket is required");
+
+			tokio::spawn(async move {
+				loop {
+					for (_, external) in &p.networking.expose_ports {
+						let client = buckle::client::Client::new(buckle_socket.clone()).unwrap();
+
+						client
+							.network()
+							.await
+							.unwrap()
+							.expose_port(*external, buckle::upnp::Protocol::TCP)
+							.await
+							.unwrap();
+					}
+				}
+			});
+			let command = generate_command(pkg, l_args.volume_root)?;
 
 			let status = std::process::Command::new(&command[0])
 				.args(command.iter().skip(1))
@@ -146,9 +164,9 @@ async fn main() -> Result<()> {
 		Commands::CreateUnit(cu_args) => {
 			let r = Registry::new(args.registry_path.clone().unwrap_or(cwd.clone()));
 			let systemd = SystemdUnit::new(
-				buckle::client::Client::new(args.buckle_socket.expect(
+				args.buckle_socket.expect(
 					"buckle connectivity is required for this operation; please use the buckle commandline flag.",
-				))?,
+				),
 				r.load(&cu_args.package_name, &cu_args.package_version)?
 					.compile()
 					.await?,

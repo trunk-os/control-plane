@@ -10,8 +10,8 @@ const UNIT_TEMPLATE: &str = r#"
 Description=Charon launcher for @PACKAGE_NAME@, version @PACKAGE_VERSION@
 
 [Service]
-ExecStart=@CHARON_PATH@ -r @REGISTRY_PATH@ launch @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
-ExecStop=@CHARON_PATH@ -r @REGISTRY_PATH@ stop @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
+ExecStart=@CHARON_PATH@ -b @BUCKLE_SOCKET@ -r @REGISTRY_PATH@ launch @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
+ExecStop=@CHARON_PATH@ -b @BUCKLE_SOCKET@ -r @REGISTRY_PATH@ stop @PACKAGE_NAME@ @PACKAGE_VERSION@ @VOLUME_ROOT@
 Restart=always
 TimeoutSec=300
 
@@ -21,7 +21,7 @@ Alias=@PACKAGE_FILENAME@.service
 
 #[derive(Debug, Clone)]
 pub struct SystemdUnit {
-	buckle: buckle::client::Client,
+	buckle_socket: PathBuf,
 	package: CompiledPackage,
 	systemd_root: Option<PathBuf>,
 	charon_path: Option<PathBuf>,
@@ -29,15 +29,19 @@ pub struct SystemdUnit {
 
 impl SystemdUnit {
 	pub fn new(
-		buckle: buckle::client::Client, package: CompiledPackage, systemd_root: Option<PathBuf>,
+		buckle_socket: PathBuf, package: CompiledPackage, systemd_root: Option<PathBuf>,
 		charon_path: Option<PathBuf>,
 	) -> Self {
 		Self {
-			buckle,
+			buckle_socket,
 			package,
 			systemd_root,
 			charon_path,
 		}
+	}
+
+	pub fn buckle(&self) -> Result<buckle::client::Client> {
+		Ok(buckle::client::Client::new(self.buckle_socket.clone())?)
 	}
 
 	pub fn service_name(&self) -> String {
@@ -69,6 +73,7 @@ impl SystemdUnit {
 						"PACKAGE_VERSION" => out.push_str(&self.package.title.version),
 						"PACKAGE_FILENAME" => out.push_str(&self.package.title.to_string()),
 						"REGISTRY_PATH" => out.push_str(&registry_path.to_string_lossy()),
+						"BUCKLE_SOCKET" => out.push_str(&self.buckle_socket.to_string_lossy()),
 						"VOLUME_ROOT" => out.push_str(&volume_root.to_string_lossy()),
 						"CHARON_PATH" => {
 							out.push_str(
@@ -132,8 +137,10 @@ impl SystemdUnit {
 			)
 		})?;
 
-		self.buckle.systemd().await?.reload().await?;
-		self.buckle
+		let buckle = self.buckle()?;
+
+		buckle.systemd().await?.reload().await?;
+		buckle
 			.systemd()
 			.await?
 			.start_unit(format!("{}.service", self.package.title))
@@ -144,8 +151,12 @@ impl SystemdUnit {
 
 	pub async fn remove_unit(&self) -> Result<()> {
 		// FIXME: this should not be here! use GRPC!
-		let client = buckle::systemd::Systemd::new_system().await?;
-		let _ = client.stop(format!("{}.service", self.package.title)).await;
+		let buckle = self.buckle()?;
+		buckle
+			.systemd()
+			.await?
+			.stop_unit(format!("{}.service", self.package.title))
+			.await?;
 		std::fs::remove_file(self.filename()).map_err(|e| {
 			anyhow!(
 				"Could not remove service unit {}: {}",
@@ -154,7 +165,7 @@ impl SystemdUnit {
 			)
 		})?;
 
-		client.reload().await?;
+		buckle.systemd().await?.reload().await?;
 
 		Ok(())
 	}
@@ -179,7 +190,7 @@ mod tests {
 			start_server(false, Some("charon-test-unit-names".into())).await;
 		let registry = Registry::new("testdata/registry".into());
 		let unit = SystemdUnit::new(
-			config.buckle().unwrap(),
+			config.buckle_socket,
 			load(&registry, "podman-test", "0.0.2").await.unwrap(),
 			Some(SYSTEMD_SERVICE_ROOT.into()),
 			Some("/usr/bin/charon".into()),
@@ -202,7 +213,7 @@ mod tests {
 		let registry = Registry::new("testdata/registry".into());
 		let pkg = load(&registry, "podman-test", "0.0.2").await.unwrap();
 		let unit = SystemdUnit::new(
-			config.buckle().unwrap(),
+			config.buckle_socket.clone(),
 			pkg,
 			Some(crate::SYSTEMD_SERVICE_ROOT.into()),
 			Some(crate::DEFAULT_CHARON_BIN_PATH.into()),
@@ -218,14 +229,14 @@ mod tests {
 Description=Charon launcher for podman-test, version 0.0.2
 
 [Service]
-ExecStart=/usr/bin/charon -r testdata/registry launch podman-test 0.0.2 /tmp/volroot
-ExecStop=/usr/bin/charon -r testdata/registry stop podman-test 0.0.2 /tmp/volroot
+ExecStart=/usr/bin/charon -b @BUCKLE_SOCKET@ -r testdata/registry launch podman-test 0.0.2 /tmp/volroot
+ExecStop=/usr/bin/charon -b @BUCKLE_SOCKET@ -r testdata/registry stop podman-test 0.0.2 /tmp/volroot
 Restart=always
 TimeoutSec=300
 
 [Install]
 Alias=podman-test-0.0.2.service
-"#,
+"#.replace("@BUCKLE_SOCKET@", &config.buckle_socket.to_string_lossy().to_string()),
 		);
 		if let Some(buckle_info) = buckle_info {
 			let _ =
