@@ -1,13 +1,15 @@
 use crate::{
 	grpc::{
-		GrpcLogMessage, GrpcLogParams, GrpcUnit, GrpcUnitList, GrpcUnitName, GrpcUnitSettings,
-		PingResult, UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset,
-		ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
+		GrpcLogMessage, GrpcLogParams, GrpcPortForward, GrpcUnit, GrpcUnitList, GrpcUnitName,
+		GrpcUnitSettings, PingResult, UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter,
+		ZfsModifyDataset, ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
+		network_server::{Network, NetworkServer},
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
 	},
 	sysinfo::Info,
+	upnp::PortForward,
 };
 use std::{fs::Permissions, os::unix::fs::PermissionsExt, pin::Pin};
 use tokio_stream::{Stream, wrappers::ReceiverStream};
@@ -52,7 +54,18 @@ impl Server {
 			.add_service(StatusServer::new(self.clone()))
 			.add_service(ZfsServer::new(self.clone()))
 			.add_service(SystemdServer::new(self.clone()))
+			.add_service(NetworkServer::new(self.clone()))
 			.serve_with_incoming(uds_stream))
+	}
+}
+
+#[tonic::async_trait]
+impl Network for Server {
+	async fn expose_port(&self, req: tonic::Request<GrpcPortForward>) -> Result<Response<()>> {
+		let port_forward: PortForward = req.into_inner().into();
+		let port_forward: easy_upnp::UpnpConfig = port_forward.into();
+		let _ = easy_upnp::add_ports([port_forward]);
+		Ok(Response::new(()))
 	}
 }
 
