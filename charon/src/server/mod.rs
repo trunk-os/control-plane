@@ -277,9 +277,7 @@ impl Query for Server {
 	) -> Result<tonic::Response<ProtoPromptResponses>> {
 		let r = ResponseRegistry::new(self.config.registry.path.clone());
 		let title = title.into_inner();
-		let responses = r
-			.get(&title.name)
-			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+		let responses = r.get(&title.name).unwrap_or_default();
 
 		let mut out = ProtoPromptResponses {
 			name: title.name,
