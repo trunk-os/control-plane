@@ -77,9 +77,14 @@ message ZFSRoot {
   string root = 1;
 }
 
+message ZFSExists {
+  bool exists = 1;
+}
+
 service ZFS {
   rpc RootPath(google.protobuf.Empty) returns (ZFSRoot);
   rpc List(ZFSListFilter)             returns (ZFSList);
+  rpc Exists(ZFSName)                 returns (ZFSExists);
   rpc CreateDataset(ZFSDataset)       returns (google.protobuf.Empty);
   rpc CreateVolume(ZFSVolume)         returns (google.protobuf.Empty);
   rpc ModifyDataset(ZFSModifyDataset) returns (google.protobuf.Empty);

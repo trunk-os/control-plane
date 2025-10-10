@@ -1,8 +1,8 @@
 use crate::{
 	grpc::{
 		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitName, GrpcUnitSettings, PingResult,
-		UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume,
-		ZfsName, ZfsRoot, ZfsVolume,
+		UnitListFilter, ZfsDataset, ZfsExists, ZfsList, ZfsListFilter, ZfsModifyDataset,
+		ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
@@ -186,6 +186,24 @@ impl Zfs for Server {
 		Ok(Response::new(ZfsRoot {
 			root: format!("/{}", self.config.zfs.pool),
 		}))
+	}
+
+	async fn exists(&self, name: Request<ZfsName>) -> Result<Response<ZfsExists>> {
+		let n = name.into_inner();
+		let items = self
+			.config
+			.zfs
+			.controller()
+			.list(Some(n.clone().name))
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+
+		if let Some(found_name) = items.first().map(|x| &x.name) {
+			Ok(Response::new(ZfsExists {
+				exists: &n.name == found_name,
+			}))
+		} else {
+			Ok(Response::new(ZfsExists { exists: false }))
+		}
 	}
 
 	async fn modify_dataset(&self, info: Request<ZfsModifyDataset>) -> Result<Response<()>> {
