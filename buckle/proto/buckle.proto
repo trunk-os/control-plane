@@ -179,3 +179,18 @@ service Systemd {
   rpc StartUnit(GRPCUnitName)       returns (google.protobuf.Empty);
   rpc StopUnit(GRPCUnitName)        returns (google.protobuf.Empty);
 }
+
+enum GRPCProtocol {
+  TCP = 0;
+  UDP = 1;
+}
+
+message GRPCPortForward {
+  uint32       port     = 1;
+  GRPCProtocol protocol = 2;
+}
+
+
+service Network {
+  rpc ExposePort(GRPCPortForward) returns(google.protobuf.Empty);
+}

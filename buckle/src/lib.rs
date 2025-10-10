@@ -5,6 +5,7 @@ pub(crate) mod middleware;
 pub mod server;
 pub(crate) mod sysinfo;
 pub mod systemd;
+pub(crate) mod upnp;
 pub(crate) mod zfs;
 
 pub mod testutil;
