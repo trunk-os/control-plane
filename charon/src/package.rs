@@ -350,28 +350,8 @@ impl CompiledPackage {
 		Ok(())
 	}
 
-	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
+	async fn destroy_volumes(&self, buckle_socket: &Path) -> Result<()> {
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
-
-		let unit_name = format!("{}.service", self.title.to_string());
-
-		'wait: loop {
-			match client.systemd().await?.unit_info(unit_name.clone()).await {
-				Ok(status) => match status.status.last_run_state {
-					LastRunState::Dead | LastRunState::Failed | LastRunState::Exited => {
-						// if we had to try a few times, the process probably needs some time to stop behind
-						// the scenes.
-						break 'wait;
-					}
-					_ => {
-						let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
-						tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-					}
-				},
-				Err(_) => break 'wait,
-			}
-		}
-
 		for volume in &self.storage.volumes {
 			client
 				.zfs()
@@ -379,9 +359,33 @@ impl CompiledPackage {
 				.destroy(format!("{}/{}", self.title.name, volume.name))
 				.await?;
 		}
-
 		client.zfs().await?.destroy(self.title.name.clone()).await?;
+		Ok(())
+	}
 
+	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
+		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
+
+		let unit_name = format!("{}.service", self.title.to_string());
+
+		match client.systemd().await?.unit_info(unit_name.clone()).await {
+			Ok(status) => match status.status.last_run_state {
+				LastRunState::Dead | LastRunState::Failed | LastRunState::Exited => {
+					self.destroy_volumes(buckle_socket).await?;
+				}
+				_ => {
+					let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
+
+					let s = self.clone();
+					let socket = buckle_socket.to_path_buf();
+					tokio::spawn(async move {
+						tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+						s.destroy_volumes(&socket).await.unwrap();
+					});
+				}
+			},
+			_ => self.destroy_volumes(buckle_socket).await?,
+		}
 		Ok(())
 	}
 }
