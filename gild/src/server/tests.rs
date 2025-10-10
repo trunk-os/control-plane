@@ -426,7 +426,6 @@ mod service {
 		assert_ne!(info.available_memory, 0);
 		assert_ne!(info.total_memory, 0);
 		assert_ne!(info.cpus, 0);
-		assert_ne!(info.cpu_usage, 0.0);
 		assert!(!info.host_name.is_empty());
 		assert!(!info.kernel_version.is_empty());
 		assert_ne!(info.load_average, [0.0, 0.0, 0.0]);

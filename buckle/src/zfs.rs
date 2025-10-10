@@ -510,6 +510,7 @@ impl Controller {
 			"zfs",
 			vec![
 				"destroy".to_string(),
+				"-r".to_string(),
 				"-f".to_string(),
 				format!("{}/{}", pool, name),
 			],
