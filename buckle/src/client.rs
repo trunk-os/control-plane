@@ -73,6 +73,14 @@ impl SystemdClient {
 		Ok(())
 	}
 
+	pub async fn unit_info(&mut self, name: String) -> Result<Unit> {
+		let unit = self
+			.client
+			.unit_info(Request::new(GrpcUnitName { name }))
+			.await?;
+		Ok(unit.into_inner().into())
+	}
+
 	pub async fn reload(&mut self) -> Result<()> {
 		self.client.reload(()).await?;
 		Ok(())

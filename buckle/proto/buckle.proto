@@ -172,6 +172,7 @@ message GRPCLogMessage {
 
 service Systemd {
   rpc SetUnit(GRPCUnitSettings)     returns (google.protobuf.Empty);
+  rpc UnitInfo(GRPCUnitName)        returns (GRPCUnit);
   rpc List(UnitListFilter)          returns (GRPCUnitList);
   rpc UnitLog(GRPCLogParams)        returns (stream GRPCLogMessage);
   rpc Reload(google.protobuf.Empty) returns (google.protobuf.Empty);

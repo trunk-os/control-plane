@@ -353,11 +353,22 @@ impl CompiledPackage {
 	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
-		let _ = client
-			.systemd()
-			.await?
-			.stop_unit(format!("{}.service", self.title.to_string()))
-			.await;
+		let unit_name = format!("{}.service", self.title.to_string());
+
+		let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
+
+		'wait: loop {
+			match client.systemd().await?.unit_info(unit_name.clone()).await {
+				Ok(status) => match status.status.last_run_state {
+					LastRunState::Dead | LastRunState::Failed | LastRunState::Exited => {
+						break 'wait;
+					}
+					_ => {}
+				},
+				Err(_) => break 'wait,
+			}
+			tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+		}
 
 		for volume in &self.storage.volumes {
 			client

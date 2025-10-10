@@ -1,8 +1,8 @@
 use crate::{
 	grpc::{
-		GrpcLogMessage, GrpcLogParams, GrpcUnitList, GrpcUnitName, GrpcUnitSettings, PingResult,
-		UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset, ZfsModifyVolume,
-		ZfsName, ZfsRoot, ZfsVolume,
+		GrpcLogMessage, GrpcLogParams, GrpcUnit, GrpcUnitList, GrpcUnitName, GrpcUnitSettings,
+		PingResult, UnitListFilter, ZfsDataset, ZfsList, ZfsListFilter, ZfsModifyDataset,
+		ZfsModifyVolume, ZfsName, ZfsRoot, ZfsVolume,
 		status_server::{Status, StatusServer},
 		systemd_server::{Systemd, SystemdServer},
 		zfs_server::{Zfs, ZfsServer},
@@ -58,6 +58,24 @@ impl Server {
 
 #[tonic::async_trait]
 impl Systemd for Server {
+	async fn unit_info(&self, req: tonic::Request<GrpcUnitName>) -> Result<Response<GrpcUnit>> {
+		let unit = crate::systemd::Systemd::new_system()
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?
+			.list(Some(req.into_inner().name))
+			.await
+			.map_err(|e| tonic::Status::new(tonic::Code::Internal, e.to_string()))?;
+
+		if let Some(unit) = unit.first() {
+			Ok(Response::new(unit.clone().into()))
+		} else {
+			Err(tonic::Status::new(
+				tonic::Code::Internal,
+				"Unit does not exist".to_string(),
+			))
+		}
+	}
+
 	async fn start_unit(&self, req: tonic::Request<GrpcUnitName>) -> Result<Response<()>> {
 		Ok(Response::new(
 			crate::systemd::Systemd::new_system()
