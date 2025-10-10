@@ -23,6 +23,7 @@ zbus_systemd = { version = "*", features = [ "systemd1" ] }
 systemd = "*"
 tempfile = "*"
 tonic-prost = "*"
+easy-upnp = "*"
 
 [build-dependencies]
 tonic-prost-build = "*"
