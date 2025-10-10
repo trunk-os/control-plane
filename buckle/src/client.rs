@@ -1,11 +1,14 @@
 use crate::{
 	grpc::{
-		GrpcLogDirection, GrpcLogMessage, GrpcLogParams, GrpcUnitName, GrpcUnitSettings,
-		PingResult, UnitEnabledState, UnitListFilter, UnitRuntimeState, ZfsListFilter, ZfsName,
+		GrpcLogDirection, GrpcLogMessage, GrpcLogParams, GrpcPortForward, GrpcProtocol,
+		GrpcUnitName, GrpcUnitSettings, PingResult, UnitEnabledState, UnitListFilter,
+		UnitRuntimeState, ZfsListFilter, ZfsName,
+		network_client::NetworkClient as GRPCNetworkClient,
 		status_client::StatusClient as GRPCStatusClient,
 		systemd_client::SystemdClient as GRPCSystemdClient, zfs_client::ZfsClient as GRPCZfsClient,
 	},
 	systemd::{LogDirection, Unit, UnitSettings},
+	upnp::Protocol,
 };
 // we expose these types we should serve them
 pub use crate::{
@@ -20,6 +23,10 @@ type Result<T> = std::result::Result<T, tonic::Status>;
 #[derive(Debug, Clone)]
 pub struct Client {
 	socket: PathBuf,
+}
+
+pub struct NetworkClient {
+	client: GRPCNetworkClient<Channel>,
 }
 
 pub struct StatusClient {
@@ -39,6 +46,12 @@ impl Client {
 		Ok(Self { socket })
 	}
 
+	pub async fn network(&self) -> anyhow::Result<NetworkClient> {
+		let client =
+			GRPCNetworkClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
+		Ok(NetworkClient { client })
+	}
+
 	pub async fn status(&self) -> anyhow::Result<StatusClient> {
 		let client =
 			GRPCStatusClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
@@ -55,6 +68,19 @@ impl Client {
 		let client =
 			GRPCSystemdClient::connect(format!("unix://{}", self.socket.to_str().unwrap())).await?;
 		Ok(SystemdClient { client })
+	}
+}
+
+impl NetworkClient {
+	pub async fn expose_port(&mut self, port: u16, protocol: Protocol) -> Result<()> {
+		let protocol: GrpcProtocol = protocol.into();
+		self.client
+			.expose_port(tonic::Request::new(GrpcPortForward {
+				port: port.into(),
+				protocol: protocol.into(),
+			}))
+			.await?;
+		Ok(())
 	}
 }
 

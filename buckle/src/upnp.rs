@@ -35,6 +35,15 @@ impl From<GrpcProtocol> for Protocol {
 	}
 }
 
+impl Into<GrpcProtocol> for Protocol {
+	fn into(self) -> GrpcProtocol {
+		match self {
+			Self::TCP => GrpcProtocol::Tcp,
+			Self::UDP => GrpcProtocol::Udp,
+		}
+	}
+}
+
 impl Into<PortMappingProtocol> for Protocol {
 	fn into(self) -> PortMappingProtocol {
 		match self {
