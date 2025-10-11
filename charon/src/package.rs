@@ -129,9 +129,9 @@ impl SourcePackage {
 	}
 
 	pub async fn compile(&self) -> Result<CompiledPackage> {
-		tracing::debug!("Compiling package: {}", self.title.name,);
+		tracing::debug!("Compiling package: {}", self.title.name);
 
-		let globals = self.globals()?;
+		let globals = self.globals().unwrap_or_default();
 		let prompts = self.prompts.clone().unwrap_or_default();
 		let responses = self.responses().unwrap_or_default();
 
