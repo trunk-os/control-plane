@@ -252,6 +252,11 @@ pub fn generate_container_command(
 		cmd.append(&mut vec!["-p".into(), portmap]);
 	}
 
+	for (hostport, localport) in &package.networking.expose_ports {
+		let portmap = format!("{}:{}", hostport, localport);
+		cmd.append(&mut vec!["-p".into(), portmap]);
+	}
+
 	for volume in &package.storage.volumes {
 		// FIXME: create filesystems on block devices.
 		//        ignoring them for now
