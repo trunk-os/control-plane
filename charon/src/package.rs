@@ -395,6 +395,23 @@ impl CompiledPackage {
 					let socket = buckle_socket.to_path_buf();
 					tokio::spawn(async move {
 						tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+						let client = buckle::client::Client::new(socket.clone()).unwrap();
+
+						for (exposed, _) in &s.networking.expose_ports {
+							client
+								.network()
+								.await
+								.unwrap()
+								.unexpose_port(
+									*exposed,
+									buckle::upnp::Protocol::TCP,
+									s.title.to_string(),
+								)
+								.await
+								.unwrap();
+						}
+
 						s.destroy_volumes(&socket).await.unwrap();
 					});
 				}

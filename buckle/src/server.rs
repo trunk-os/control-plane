@@ -84,6 +84,30 @@ impl Network for Server {
 		}
 		Ok(Response::new(()))
 	}
+
+	async fn un_expose_port(&self, req: tonic::Request<GrpcPortForward>) -> Result<Response<()>> {
+		let port_forward: PortForward = req.into_inner().into();
+		let service = port_forward.name.clone();
+		let port = port_forward.port;
+		let port_forward: easy_upnp::UpnpConfig = port_forward.into();
+		let results: Vec<Result<(), easy_upnp::Error>> =
+			easy_upnp::delete_ports([port_forward]).collect();
+
+		for result in results {
+			match result {
+				Err(e) => {
+					tracing::error!(
+						"Error forwarding uPnP port {} for service {}: {}",
+						port,
+						service,
+						e
+					)
+				}
+				_ => {}
+			}
+		}
+		Ok(Response::new(()))
+	}
 }
 
 #[tonic::async_trait]

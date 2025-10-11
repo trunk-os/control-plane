@@ -83,6 +83,20 @@ impl NetworkClient {
 			.await?;
 		Ok(())
 	}
+
+	pub async fn unexpose_port(
+		&mut self, port: u16, protocol: Protocol, name: String,
+	) -> Result<()> {
+		let protocol: GrpcProtocol = protocol.into();
+		self.client
+			.un_expose_port(tonic::Request::new(GrpcPortForward {
+				port: port.into(),
+				protocol: protocol.into(),
+				name,
+			}))
+			.await?;
+		Ok(())
+	}
 }
 
 impl SystemdClient {
