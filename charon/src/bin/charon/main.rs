@@ -146,7 +146,7 @@ async fn main() -> Result<()> {
 							.unwrap();
 					}
 
-					tokio::time::sleep(std::time::Duration::from_secs(30 * 60)).await;
+					tokio::time::sleep(std::time::Duration::from_secs(60)).await;
 				}
 			});
 			let command = generate_command(pkg, l_args.volume_root)?;
