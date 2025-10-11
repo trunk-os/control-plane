@@ -58,6 +58,12 @@ impl Ord for SourcePackage {
 
 impl SourcePackage {
 	pub fn from_file(root: &Path, name: &str, version: &str) -> Result<Self> {
+		tracing::debug!(
+			"Loading source package [name: {}, version: {}]",
+			name,
+			version
+		);
+
 		let pb = root
 			.join(PACKAGE_SUBPATH)
 			.join(name)
@@ -113,6 +119,7 @@ impl SourcePackage {
 
 	#[inline]
 	pub fn set_responses(&self, responses: &PromptResponses) -> Result<()> {
+		tracing::debug!("Setting responses for package: {}", self.title.name,);
 		self.response_registry()?.set(&self.title.name, responses)
 	}
 
@@ -122,6 +129,8 @@ impl SourcePackage {
 	}
 
 	pub async fn compile(&self) -> Result<CompiledPackage> {
+		tracing::debug!("Compiling package: {}", self.title.name,);
+
 		let globals = self.globals()?;
 		let prompts = self.prompts.clone().unwrap_or_default();
 		let responses = self.responses().unwrap_or_default();
@@ -284,6 +293,8 @@ impl CompiledPackage {
 	}
 
 	pub async fn install(&self) -> Result<()> {
+		tracing::debug!("Installing package: {}", self.title.name);
+
 		let pb = self.root.join(INSTALLED_SUBPATH).join(&self.title.name);
 		std::fs::create_dir_all(&pb)?;
 
@@ -297,6 +308,7 @@ impl CompiledPackage {
 	}
 
 	pub async fn uninstall(&self) -> Result<()> {
+		tracing::debug!("Uninstalling package: {}", self.title.name);
 		std::fs::remove_file(self.installed_path())?;
 		Ok(())
 	}
@@ -313,6 +325,7 @@ impl CompiledPackage {
 	}
 
 	pub async fn provision(&self, buckle_socket: &Path) -> Result<()> {
+		tracing::debug!("Provisioning package: {}", self.title.name);
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
 		client
@@ -350,6 +363,7 @@ impl CompiledPackage {
 	}
 
 	async fn destroy_volumes(&self, buckle_socket: &Path) -> Result<()> {
+		tracing::debug!("Destroying volumes for package: {}", self.title.name);
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 		for volume in &self.storage.volumes {
 			client
@@ -363,6 +377,7 @@ impl CompiledPackage {
 	}
 
 	pub async fn deprovision(&self, buckle_socket: &Path) -> Result<()> {
+		tracing::debug!("Deprovisioning package: {}", self.title.name);
 		let client = buckle::client::Client::new(buckle_socket.to_path_buf())?;
 
 		let unit_name = format!("{}.service", self.title.to_string());
@@ -373,6 +388,7 @@ impl CompiledPackage {
 					self.destroy_volumes(buckle_socket).await?;
 				}
 				_ => {
+					tracing::debug!("Stopping service for package: {}", self.title.name);
 					let _ = client.systemd().await?.stop_unit(unit_name.clone()).await;
 
 					let s = self.clone();
@@ -459,6 +475,7 @@ impl Source {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledSource> {
+		tracing::debug!("Compiling package source subsection");
 		Ok(match self {
 			Self::URL(x) => CompiledSource::URL(x.output(globals, prompts, responses)?),
 			Self::Container(x) => CompiledSource::Container(x.output(globals, prompts, responses)?),
@@ -497,6 +514,7 @@ impl Networking {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledNetworking> {
+		tracing::debug!("Compiling package networking subsection");
 		let mut forward_ports = Vec::new();
 		if let Some(fp) = &self.forward_ports {
 			for port in fp {
@@ -571,6 +589,7 @@ impl Storage {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledStorage> {
+		tracing::debug!("Compiling package storage subsection");
 		let mut v = Vec::new();
 		for volume in &self.volumes {
 			v.push(volume.compile(globals, prompts, responses)?);
@@ -598,6 +617,11 @@ impl Volume {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledVolume> {
+		tracing::debug!(
+			"Compiling package storage subsection, volume: {}",
+			self.name.output(globals, prompts, responses)?
+		);
+
 		let mountpoint = if let Some(mountpoint) = self
 			.mountpoint
 			.as_ref()
@@ -644,6 +668,8 @@ impl System {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledSystem> {
+		tracing::debug!("Compiling package system subsection");
+
 		let mut capabilities = Vec::new();
 
 		for cap in &self.capabilities {
@@ -680,6 +706,7 @@ impl Resources {
 	pub fn compile(
 		&self, globals: &Global, prompts: &PromptCollection, responses: &PromptResponses,
 	) -> Result<CompiledResources> {
+		tracing::debug!("Compiling package resources subsection");
 		Ok(CompiledResources {
 			cpus: self.cpus.output(globals, prompts, responses)?,
 			memory: self.memory.output(globals, prompts, responses)?,
