@@ -61,7 +61,7 @@ impl Into<UpnpConfig> for PortForward {
 			port: self.port,
 			protocol: self.protocol.into(),
 			duration: 30,
-			comment: "Forward for Trunk Package".into(),
+			comment: format!("Forward for Trunk Package {}", self.name),
 		}
 	}
 }
