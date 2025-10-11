@@ -132,7 +132,7 @@ async fn main() -> Result<()> {
 
 			tokio::spawn(async move {
 				loop {
-					for (_, external) in &p.networking.expose_ports {
+					for (external, _) in &p.networking.expose_ports {
 						eprintln!("Exposing port {} at router with uPnP", external);
 
 						let client = buckle::client::Client::new(buckle_socket.clone()).unwrap();
