@@ -14,6 +14,7 @@ pub enum Protocol {
 pub struct PortForward {
 	pub port: u16,
 	pub protocol: Protocol,
+	pub name: String,
 }
 
 impl From<GrpcPortForward> for PortForward {
@@ -21,6 +22,7 @@ impl From<GrpcPortForward> for PortForward {
 		Self {
 			port: value.port as u16,
 			protocol: value.protocol().into(),
+			name: value.name,
 		}
 	}
 }

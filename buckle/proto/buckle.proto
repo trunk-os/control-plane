@@ -188,6 +188,7 @@ enum GRPCProtocol {
 message GRPCPortForward {
   uint32       port     = 1;
   GRPCProtocol protocol = 2;
+  string       name     = 3;
 }
 
 
