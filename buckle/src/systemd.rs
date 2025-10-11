@@ -173,7 +173,7 @@ impl std::str::FromStr for EnabledState {
 
 	fn from_str(s: &str) -> Result<Self> {
 		Ok(match s {
-			"enabled" | "active" => Self::Enabled,
+			"enabled" | "active" | "activating" => Self::Enabled,
 			"disabled" | "inactive" => Self::Disabled,
 			"failed" => Self::Failed,
 			s => return Err(anyhow!("invalid enabled state '{}'", s)),
