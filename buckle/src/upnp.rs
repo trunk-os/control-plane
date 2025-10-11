@@ -12,8 +12,8 @@ pub enum Protocol {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PortForward {
-	port: u16,
-	protocol: Protocol,
+	pub port: u16,
+	pub protocol: Protocol,
 }
 
 impl From<GrpcPortForward> for PortForward {

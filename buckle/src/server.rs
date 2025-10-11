@@ -63,8 +63,19 @@ impl Server {
 impl Network for Server {
 	async fn expose_port(&self, req: tonic::Request<GrpcPortForward>) -> Result<Response<()>> {
 		let port_forward: PortForward = req.into_inner().into();
+		let port = port_forward.port;
 		let port_forward: easy_upnp::UpnpConfig = port_forward.into();
-		let _ = easy_upnp::add_ports([port_forward]);
+		let results: Vec<Result<(), easy_upnp::Error>> =
+			easy_upnp::add_ports([port_forward]).collect();
+
+		for result in results {
+			match result {
+				Err(e) => {
+					tracing::error!("Error forwarding uPnP port {}: {}", port, e)
+				}
+				_ => {}
+			}
+		}
 		Ok(Response::new(()))
 	}
 }
