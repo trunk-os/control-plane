@@ -1,7 +1,7 @@
 use crate::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 
-static STATE: AtomicUsize = AtomicUsize::new(0);
+static STATE: AtomicBool = AtomicBool::new(false);
 
 // this is less effort than populating a Map etc
 fn get_migration(name: &str) -> Option<Migration> {
@@ -11,7 +11,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: None,
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: None,
@@ -28,7 +28,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: Some(Box::new(|| Ok(()))),
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: None,
@@ -38,7 +38,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: None,
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: Some(Box::new(|| Ok(()))),
@@ -48,7 +48,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: Some(Box::new(|| Ok(()))),
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: Some(Box::new(|| Ok(()))),
@@ -58,7 +58,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: Some(Box::new(|| Err(MigrationError::Unknown))),
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: None,
@@ -68,7 +68,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: None,
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
@@ -78,7 +78,7 @@ fn get_migration(name: &str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: Some(Box::new(|| Err(MigrationError::Unknown))),
 			run: Box::new(|| {
-				STATE.store(STATE.load(Ordering::Acquire) + 1, Ordering::Release);
+				STATE.store(true, Ordering::Release);
 				Ok(())
 			}),
 			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
@@ -95,7 +95,7 @@ async fn execute_migration(name: &str) -> Result<(), MigrationError> {
 async fn execute_migration_with_state(
 	name: &str, state: MigrationState,
 ) -> Result<(), MigrationError> {
-	STATE.store(0, Ordering::Release);
+	STATE.store(false, Ordering::Release);
 
 	get_migration(name)
 		.expect(&format!("test migration ({}) missing from table", name))
@@ -109,7 +109,9 @@ mod migration {
 	#[tokio::test]
 	async fn basic_run() {
 		assert!(execute_migration("successful_run").await.is_ok());
+		assert!(STATE.load(Ordering::Acquire));
 		assert!(execute_migration("run_only_with_error").await.is_err());
+		assert!(!STATE.load(Ordering::Acquire));
 	}
 
 	#[tokio::test]
@@ -120,14 +122,23 @@ mod migration {
 			"successful_run_with_successful_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_ok());
+			assert!(STATE.load(Ordering::Acquire), "{}", name);
 		}
+
+		// state is different here for post_check (run succeeded, post did not); that state check is
+		// below this one
+		assert!(
+			execute_migration("successful_run_with_failing_post_check")
+				.await
+				.is_err()
+		);
 
 		for name in vec![
 			"successful_run_with_failing_check",
-			"successful_run_with_failing_post_check",
 			"successful_run_with_failing_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_err());
+			assert!(!STATE.load(Ordering::Acquire), "{}", name);
 		}
 	}
 
