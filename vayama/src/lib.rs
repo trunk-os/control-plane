@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::{collections::BTreeMap, path::PathBuf, process::ExitStatus};
 
 use anyhow::{Result, anyhow};

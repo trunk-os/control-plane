@@ -3883,7 +3883,9 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror",
+ "tokio",
  "tracing",
 ]
 
