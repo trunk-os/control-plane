@@ -3,6 +3,29 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static STATE: AtomicBool = AtomicBool::new(false);
 
+fn get_state() -> bool {
+	STATE.load(Ordering::Acquire)
+}
+
+fn successful_run_func() -> Box<MigrationFunc> {
+	Box::new(|| {
+		STATE.store(true, Ordering::SeqCst);
+		Ok(())
+	})
+}
+
+fn error_run_func() -> Box<MigrationFunc> {
+	Box::new(|| Err(MigrationError::Unknown))
+}
+
+fn successful_check() -> Option<Box<MigrationFunc>> {
+	Some(Box::new(|| Ok(())))
+}
+
+fn error_check() -> Option<Box<MigrationFunc>> {
+	Some(Box::new(|| Err(MigrationError::Unknown)))
+}
+
 // this is less effort than populating a Map etc
 fn get_migration(name: &str) -> Option<Migration> {
 	match name {
@@ -10,78 +33,57 @@ fn get_migration(name: &str) -> Option<Migration> {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
+			run: successful_run_func(),
 			post_check: None,
 		}),
 		"run_only_with_error" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: Box::new(|| Err(MigrationError::Unknown)),
+			run: error_run_func(),
 			post_check: None,
 		}),
 		"successful_run_with_successful_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
-			check: Some(Box::new(|| Ok(()))),
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
+			check: successful_check(),
+			run: successful_run_func(),
 			post_check: None,
 		}),
 		"successful_run_with_successful_post_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
-			post_check: Some(Box::new(|| Ok(()))),
+			run: successful_run_func(),
+			post_check: successful_check(),
 		}),
 		"successful_run_with_successful_both_checks" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
-			check: Some(Box::new(|| Ok(()))),
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
-			post_check: Some(Box::new(|| Ok(()))),
+			check: successful_check(),
+			run: successful_run_func(),
+			post_check: successful_check(),
 		}),
 		"successful_run_with_failing_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
-			check: Some(Box::new(|| Err(MigrationError::Unknown))),
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
+			check: error_check(),
+			run: successful_run_func(),
 			post_check: None,
 		}),
 		"successful_run_with_failing_post_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
-			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
+			run: successful_run_func(),
+			post_check: error_check(),
 		}),
 		"successful_run_with_failing_both_checks" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
-			check: Some(Box::new(|| Err(MigrationError::Unknown))),
-			run: Box::new(|| {
-				STATE.store(true, Ordering::Release);
-				Ok(())
-			}),
-			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
+			check: error_check(),
+			run: successful_run_func(),
+			post_check: error_check(),
 		}),
 		_ => None,
 	}
@@ -95,7 +97,7 @@ async fn execute_migration(name: &str) -> Result<(), MigrationError> {
 async fn execute_migration_with_state(
 	name: &str, state: MigrationState,
 ) -> Result<(), MigrationError> {
-	STATE.store(false, Ordering::Release);
+	STATE.store(false, Ordering::SeqCst);
 
 	get_migration(name)
 		.expect(&format!("test migration ({}) missing from table", name))
@@ -109,9 +111,9 @@ mod migration {
 	#[tokio::test]
 	async fn basic_run() {
 		assert!(execute_migration("successful_run").await.is_ok());
-		assert!(STATE.load(Ordering::Acquire));
+		assert!(get_state());
 		assert!(execute_migration("run_only_with_error").await.is_err());
-		assert!(!STATE.load(Ordering::Acquire));
+		assert!(!get_state());
 	}
 
 	#[tokio::test]
@@ -122,7 +124,7 @@ mod migration {
 			"successful_run_with_successful_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_ok());
-			assert!(STATE.load(Ordering::Acquire), "{}", name);
+			assert!(get_state(), "{}", name);
 		}
 
 		// state is different here for post_check (run succeeded, post did not); that state check is
@@ -138,7 +140,7 @@ mod migration {
 			"successful_run_with_failing_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_err());
-			assert!(!STATE.load(Ordering::Acquire), "{}", name);
+			assert!(!get_state(), "{}", name);
 		}
 	}
 
