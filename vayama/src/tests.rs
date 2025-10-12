@@ -35,20 +35,26 @@ async fn execute_migration_with_state(
 		.await
 }
 
-#[tokio::test]
-async fn basic_run() {
-	assert!(execute_migration("successful_run").await.is_ok());
-	assert!(execute_migration("run_only_with_error").await.is_err());
+mod migration {
+	use super::*;
+
+	#[tokio::test]
+	async fn basic_run() {
+		assert!(execute_migration("successful_run").await.is_ok());
+		assert!(execute_migration("run_only_with_error").await.is_err());
+	}
+
+	#[test]
+	#[ignore]
+	fn run_with_checks() {}
+
+	#[test]
+	#[ignore]
+	fn run_with_dependencies() {}
+
+	#[test]
+	#[ignore]
+	fn run_with_recovery() {}
 }
 
-#[test]
-#[ignore]
-fn run_with_checks() {}
-
-#[test]
-#[ignore]
-fn run_with_dependencies() {}
-
-#[test]
-#[ignore]
-fn run_with_recovery() {}
+mod migrator {}
