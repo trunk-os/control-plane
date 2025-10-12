@@ -88,6 +88,13 @@ fn get_migration(name: &'static str) -> Option<Migration> {
 			run: successful_run_func(name),
 			post_check: error_check(),
 		}),
+		"successful_run_with_dependencies" => Some(Migration {
+			name: name.to_string(),
+			dependencies: vec!["dependency".into()],
+			check: None,
+			run: successful_run_func(name),
+			post_check: None,
+		}),
 		_ => None,
 	}
 }
@@ -146,8 +153,23 @@ mod migration {
 	}
 
 	#[tokio::test]
-	#[ignore]
-	async fn run_with_dependencies() {}
+	async fn run_with_dependencies() {
+		let mut state = MigrationState::default();
+		state.failed_migrations = vec!["dependency".into()];
+		assert!(
+			execute_migration_with_state("successful_run_with_dependencies", state.clone())
+				.await
+				.is_err()
+		);
+		assert!(!get_state("successful_run_with_dependencies"));
+		state.failed_migrations = vec![];
+		assert!(
+			execute_migration_with_state("successful_run_with_dependencies", state)
+				.await
+				.is_ok()
+		);
+		assert!(get_state("successful_run_with_dependencies"))
+	}
 
 	#[tokio::test]
 	#[ignore]
