@@ -25,7 +25,7 @@ pub enum MigrationError {
 	CommandFailed(ExitStatus, Vec<String>, Option<String>),
 }
 
-pub type MigrationFunc = dyn FnMut() -> std::result::Result<(), MigrationError>;
+pub type MigrationFunc = Box<dyn FnMut() -> std::result::Result<(), MigrationError>>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MigrationState {
@@ -123,9 +123,9 @@ impl Migrator {
 pub struct Migration {
 	pub name: String,
 	pub dependencies: Vec<String>,
-	pub check: Option<Box<MigrationFunc>>,
-	pub run: Box<MigrationFunc>,
-	pub post_check: Option<Box<MigrationFunc>>,
+	pub check: Option<MigrationFunc>,
+	pub run: MigrationFunc,
+	pub post_check: Option<MigrationFunc>,
 }
 
 impl std::fmt::Debug for Migration {

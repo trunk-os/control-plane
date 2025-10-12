@@ -7,22 +7,22 @@ fn get_state() -> bool {
 	STATE.load(Ordering::Acquire)
 }
 
-fn successful_run_func() -> Box<MigrationFunc> {
+fn successful_run_func() -> MigrationFunc {
 	Box::new(|| {
 		STATE.store(true, Ordering::SeqCst);
 		Ok(())
 	})
 }
 
-fn error_run_func() -> Box<MigrationFunc> {
+fn error_run_func() -> MigrationFunc {
 	Box::new(|| Err(MigrationError::Unknown))
 }
 
-fn successful_check() -> Option<Box<MigrationFunc>> {
+fn successful_check() -> Option<MigrationFunc> {
 	Some(Box::new(|| Ok(())))
 }
 
-fn error_check() -> Option<Box<MigrationFunc>> {
+fn error_check() -> Option<MigrationFunc> {
 	Some(Box::new(|| Err(MigrationError::Unknown)))
 }
 
