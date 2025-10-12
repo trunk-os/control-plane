@@ -28,7 +28,7 @@ pub enum MigrationError {
 	CommandFailed(ExitStatus, Vec<String>, Option<String>),
 }
 
-pub type MigrationFunc<'a> = Box<&'a dyn Future<Output = std::result::Result<(), MigrationError>>>;
+pub type MigrationFunc = dyn FnMut() -> std::result::Result<(), MigrationError>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MigrationState {
@@ -36,19 +36,19 @@ pub struct MigrationState {
 	pub failed_migrations: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct Migrator<'a> {
+#[derive(Debug, Default)]
+pub struct Migrator {
 	pub state_file: PathBuf,
 	pub state: MigrationState,
-	pub migrations: BTreeMap<String, Migration<'a>>,
+	pub migrations: BTreeMap<String, Migration>,
 }
 
-impl<'a> Migrator<'a> {
-	pub fn new(migrations: Vec<Migration<'a>>) -> Result<Migrator<'a>> {
+impl Migrator {
+	pub fn new(migrations: Vec<Migration>) -> Result<Self> {
 		Self::new_with_root(migrations, PathBuf::from(DEFAULT_ROOT))
 	}
 
-	pub fn new_with_root(migrations: Vec<Migration<'a>>, root: PathBuf) -> Result<Migrator<'a>> {
+	pub fn new_with_root(migrations: Vec<Migration>, root: PathBuf) -> Result<Self> {
 		let state_file = root.join(MIGRATION_FILENAME);
 
 		let state: MigrationState = match std::fs::OpenOptions::new().read(true).open(&state_file) {
@@ -92,7 +92,7 @@ impl<'a> Migrator<'a> {
 			));
 		}
 
-		if let Some(migration) = self.migrations.values().nth(self.state.current_state) {
+		if let Some(migration) = self.migrations.values_mut().nth(self.state.current_state) {
 			return match migration.execute(&self.state).await {
 				Ok(_) => {
 					self.persist_state()?;
@@ -123,29 +123,46 @@ impl<'a> Migrator<'a> {
 	}
 }
 
-#[derive(Clone)]
-pub struct Migration<'a> {
+pub struct Migration {
 	pub name: String,
 	pub dependencies: Vec<String>,
-	pub check: Option<MigrationFunc<'a>>,
-	pub run: MigrationFunc<'a>,
-	pub post_check: Option<MigrationFunc<'a>>,
+	pub check: Option<Box<MigrationFunc>>,
+	pub run: Box<MigrationFunc>,
+	pub post_check: Option<Box<MigrationFunc>>,
 }
 
-impl<'a> std::fmt::Debug for Migration<'a> {
+impl std::fmt::Debug for Migration {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		f.write_str(&format!("[vayama migration: {}]", self.name))
 	}
 }
 
-impl<'a> Migration<'a> {
-	pub async fn execute(&self, state: &MigrationState) -> std::result::Result<(), MigrationError> {
+impl Migration {
+	pub async fn execute(
+		&mut self, state: &MigrationState,
+	) -> std::result::Result<(), MigrationError> {
 		for migration in &state.failed_migrations {
 			if self.dependencies.contains(migration) {
 				return Err(MigrationError::DependencyFailed(
 					self.name.clone(),
 					migration.clone(),
 				));
+			}
+		}
+
+		if let Some(check) = &mut self.check {
+			if let Err(e) = check() {
+				return Err(e);
+			}
+		}
+
+		if let Err(e) = (self.run)() {
+			return Err(e);
+		}
+
+		if let Some(post_check) = &mut self.post_check {
+			if let Err(e) = post_check() {
+				return Err(e);
 			}
 		}
 
