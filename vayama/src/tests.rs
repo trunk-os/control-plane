@@ -162,6 +162,7 @@ mod migration {
 				.is_err()
 		);
 		assert!(!get_state("successful_run_with_dependencies"));
+
 		state.failed_migrations = vec![];
 		assert!(
 			execute_migration_with_state("successful_run_with_dependencies", state)
@@ -170,13 +171,33 @@ mod migration {
 		);
 		assert!(get_state("successful_run_with_dependencies"))
 	}
-
-	#[tokio::test]
-	#[ignore]
-	async fn run_with_recovery() {}
 }
 
 #[allow(unused)]
 mod migrator {
 	use super::*;
+
+	#[tokio::test]
+	#[ignore]
+	async fn clean_run() {}
+
+	#[tokio::test]
+	#[ignore]
+	async fn run_with_failures() {}
+
+	#[tokio::test]
+	#[ignore]
+	async fn run_twice_with_new_migrations() {}
+
+	#[tokio::test]
+	#[ignore]
+	async fn run_with_failing_checks() {}
+
+	#[tokio::test]
+	#[ignore]
+	async fn run_with_failing_dependencies() {}
+
+	#[tokio::test]
+	#[ignore]
+	async fn run_with_recovery() {}
 }
