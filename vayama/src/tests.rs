@@ -38,6 +38,27 @@ fn get_migration(name: &str) -> Option<Migration> {
 			run: Box::new(|| Ok(())),
 			post_check: Some(Box::new(|| Ok(()))),
 		}),
+		"successful_run_with_failing_check" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: Some(Box::new(|| Err(MigrationError::Unknown))),
+			run: Box::new(|| Ok(())),
+			post_check: None,
+		}),
+		"successful_run_with_failing_post_check" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: None,
+			run: Box::new(|| Ok(())),
+			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
+		}),
+		"successful_run_with_failing_both_checks" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: Some(Box::new(|| Err(MigrationError::Unknown))),
+			run: Box::new(|| Ok(())),
+			post_check: Some(Box::new(|| Err(MigrationError::Unknown))),
+		}),
 		_ => None,
 	}
 }
@@ -67,21 +88,21 @@ mod migration {
 
 	#[tokio::test]
 	async fn run_with_checks() {
-		assert!(
-			execute_migration("successful_run_with_successful_check")
-				.await
-				.is_ok()
-		);
-		assert!(
-			execute_migration("successful_run_with_successful_post_check")
-				.await
-				.is_ok()
-		);
-		assert!(
-			execute_migration("successful_run_with_successful_both_checks")
-				.await
-				.is_ok()
-		);
+		for name in vec![
+			"successful_run_with_successful_check",
+			"successful_run_with_successful_post_check",
+			"successful_run_with_successful_both_checks",
+		] {
+			assert!(execute_migration(name).await.is_ok());
+		}
+
+		for name in vec![
+			"successful_run_with_failing_check",
+			"successful_run_with_failing_post_check",
+			"successful_run_with_failing_both_checks",
+		] {
+			assert!(execute_migration(name).await.is_err());
+		}
 	}
 
 	#[tokio::test]
