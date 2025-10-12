@@ -1,7 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use std::{collections::BTreeMap, path::PathBuf, process::ExitStatus};
+use std::{
+	collections::{BTreeMap, BTreeSet},
+	path::PathBuf,
+	process::ExitStatus,
+};
 
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -30,7 +34,7 @@ pub type MigrationFunc = Box<dyn FnMut() -> std::result::Result<(), MigrationErr
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigrationState {
 	pub current_state: usize,
-	pub failed_migrations: Vec<String>,
+	pub failed_migrations: BTreeSet<String>,
 }
 
 #[derive(Debug, Default)]
@@ -80,6 +84,29 @@ impl Migrator {
 		Ok(serde_json::to_writer(f, &self.state)?)
 	}
 
+	pub async fn execute_failed(&mut self) -> Result<()> {
+		let failed_migrations = self.state.failed_migrations.clone();
+		for failed in &failed_migrations {
+			if let Some(migration) = self.migrations.get_mut(failed) {
+				match migration.execute(&self.state).await {
+					Ok(_) => {
+						self.state.failed_migrations.remove(failed);
+					}
+					Err(e) => {
+						tracing::error!(
+							"Error during vayama migration '{}'. Marking failed: {}",
+							migration.name,
+							e
+						);
+					}
+				}
+			}
+		}
+
+		self.persist_state()?;
+		Ok(())
+	}
+
 	pub async fn execute(&mut self) -> Result<Option<usize>> {
 		if !self.more_migrations() {
 			return Err(anyhow!(
@@ -90,11 +117,11 @@ impl Migrator {
 		}
 
 		if let Some(migration) = self.migrations.values_mut().nth(self.state.current_state) {
+			let orig = self.state.current_state;
+			self.state.current_state += 1;
+
 			return match migration.execute(&self.state).await {
 				Ok(_) => {
-					let orig = self.state.current_state;
-					self.state.current_state += 1;
-
 					self.persist_state()?;
 
 					Ok(Some(orig))
@@ -106,10 +133,8 @@ impl Migrator {
 						e
 					);
 
-					if !self.state.failed_migrations.contains(&migration.name) {
-						self.state.failed_migrations.push(migration.name.clone());
-						self.persist_state()?;
-					}
+					self.state.failed_migrations.insert(migration.name.clone());
+					self.persist_state()?;
 
 					Ok(None)
 				}

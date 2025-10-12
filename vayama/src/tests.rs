@@ -115,6 +115,7 @@ async fn execute_migration_with_state(
 
 mod migration {
 	use super::*;
+	use std::collections::BTreeSet;
 
 	#[tokio::test]
 	async fn basic_run() {
@@ -155,7 +156,8 @@ mod migration {
 	#[tokio::test]
 	async fn run_with_dependencies() {
 		let mut state = MigrationState::default();
-		state.failed_migrations = vec!["dependency".into()];
+		state.failed_migrations = BTreeSet::new();
+		state.failed_migrations.insert("dependency".into());
 		assert!(
 			execute_migration_with_state("successful_run_with_dependencies", state.clone())
 				.await
@@ -163,7 +165,7 @@ mod migration {
 		);
 		assert!(!get_state("successful_run_with_dependencies"));
 
-		state.failed_migrations = vec![];
+		state.failed_migrations = Default::default();
 		assert!(
 			execute_migration_with_state("successful_run_with_dependencies", state)
 				.await
@@ -173,9 +175,8 @@ mod migration {
 	}
 }
 
-#[allow(unused)]
 mod migrator {
-	use std::convert::Infallible;
+	use std::collections::BTreeSet;
 
 	use anyhow::Result;
 	use tempfile::TempDir;
@@ -218,8 +219,39 @@ mod migrator {
 	}
 
 	#[tokio::test]
-	#[ignore]
-	async fn run_with_failures() {}
+	async fn run_with_failures() {
+		let (mut migrator, dir) = create_migrator(vec![
+			get_migration("run_only_with_error").unwrap(),
+			get_migration("successful_run").unwrap(),
+			get_migration("successful_run_with_successful_check").unwrap(),
+		])
+		.unwrap();
+
+		let mut i = 0;
+
+		while let Ok(res) = migrator.execute().await {
+			if i == 0 {
+				assert_eq!(res, None);
+			} else {
+				assert_eq!(res, Some(i), "{}", i);
+			}
+
+			i += 1;
+		}
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+
+		let mut res = BTreeSet::new();
+		res.insert("run_only_with_error".into());
+		assert_eq!(migrator.state.failed_migrations, res);
+
+		assert!(!migrator.more_migrations());
+	}
 
 	#[tokio::test]
 	#[ignore]
