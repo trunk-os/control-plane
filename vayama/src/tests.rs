@@ -1,15 +1,18 @@
 use crate::*;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+	collections::BTreeMap,
+	sync::{Arc, LazyLock, Mutex},
+};
 
-static STATE: AtomicBool = AtomicBool::new(false);
+static STATE: LazyLock<Arc<Mutex<BTreeMap<String, bool>>>> = LazyLock::new(|| Default::default());
 
-fn get_state() -> bool {
-	STATE.load(Ordering::Acquire)
+fn get_state(name: &str) -> bool {
+	*STATE.lock().unwrap().get(name).unwrap_or(&false)
 }
 
-fn successful_run_func() -> MigrationFunc {
-	Box::new(|| {
-		STATE.store(true, Ordering::SeqCst);
+fn successful_run_func(name: &'static str) -> MigrationFunc {
+	Box::new(move || {
+		STATE.lock().unwrap().insert(name.to_string(), true);
 		Ok(())
 	})
 }
@@ -27,13 +30,13 @@ fn error_check() -> Option<MigrationFunc> {
 }
 
 // this is less effort than populating a Map etc
-fn get_migration(name: &str) -> Option<Migration> {
+fn get_migration(name: &'static str) -> Option<Migration> {
 	match name {
 		"successful_run" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: None,
 		}),
 		"run_only_with_error" => Some(Migration {
@@ -47,58 +50,56 @@ fn get_migration(name: &str) -> Option<Migration> {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: successful_check(),
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: None,
 		}),
 		"successful_run_with_successful_post_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: successful_check(),
 		}),
 		"successful_run_with_successful_both_checks" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: successful_check(),
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: successful_check(),
 		}),
 		"successful_run_with_failing_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: error_check(),
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: None,
 		}),
 		"successful_run_with_failing_post_check" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: error_check(),
 		}),
 		"successful_run_with_failing_both_checks" => Some(Migration {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: error_check(),
-			run: successful_run_func(),
+			run: successful_run_func(name),
 			post_check: error_check(),
 		}),
 		_ => None,
 	}
 }
 
-async fn execute_migration(name: &str) -> Result<(), MigrationError> {
+async fn execute_migration(name: &'static str) -> Result<(), MigrationError> {
 	let state: MigrationState = Default::default();
 	execute_migration_with_state(name, state).await
 }
 
 async fn execute_migration_with_state(
-	name: &str, state: MigrationState,
+	name: &'static str, state: MigrationState,
 ) -> Result<(), MigrationError> {
-	STATE.store(false, Ordering::SeqCst);
-
 	get_migration(name)
 		.expect(&format!("test migration ({}) missing from table", name))
 		.execute(&state)
@@ -111,9 +112,9 @@ mod migration {
 	#[tokio::test]
 	async fn basic_run() {
 		assert!(execute_migration("successful_run").await.is_ok());
-		assert!(get_state());
+		assert!(get_state("successful_run"));
 		assert!(execute_migration("run_only_with_error").await.is_err());
-		assert!(!get_state());
+		assert!(!get_state("run_only_with_error"));
 	}
 
 	#[tokio::test]
@@ -124,7 +125,7 @@ mod migration {
 			"successful_run_with_successful_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_ok());
-			assert!(get_state(), "{}", name);
+			assert!(get_state(name), "{}", name);
 		}
 
 		// state is different here for post_check (run succeeded, post did not); that state check is
@@ -140,7 +141,7 @@ mod migration {
 			"successful_run_with_failing_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_err());
-			assert!(!get_state(), "{}", name);
+			assert!(!get_state(name), "{}", name);
 		}
 	}
 
