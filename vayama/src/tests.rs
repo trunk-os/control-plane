@@ -17,6 +17,27 @@ fn get_migration(name: &str) -> Option<Migration> {
 			run: Box::new(|| Err(MigrationError::Unknown)),
 			post_check: None,
 		}),
+		"successful_run_with_successful_check" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: Some(Box::new(|| Ok(()))),
+			run: Box::new(|| Ok(())),
+			post_check: None,
+		}),
+		"successful_run_with_successful_post_check" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: None,
+			run: Box::new(|| Ok(())),
+			post_check: Some(Box::new(|| Ok(()))),
+		}),
+		"successful_run_with_successful_both_checks" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: Some(Box::new(|| Ok(()))),
+			run: Box::new(|| Ok(())),
+			post_check: Some(Box::new(|| Ok(()))),
+		}),
 		_ => None,
 	}
 }
@@ -44,17 +65,32 @@ mod migration {
 		assert!(execute_migration("run_only_with_error").await.is_err());
 	}
 
-	#[test]
-	#[ignore]
-	fn run_with_checks() {}
+	#[tokio::test]
+	async fn run_with_checks() {
+		assert!(
+			execute_migration("successful_run_with_successful_check")
+				.await
+				.is_ok()
+		);
+		assert!(
+			execute_migration("successful_run_with_successful_post_check")
+				.await
+				.is_ok()
+		);
+		assert!(
+			execute_migration("successful_run_with_successful_both_checks")
+				.await
+				.is_ok()
+		);
+	}
 
-	#[test]
+	#[tokio::test]
 	#[ignore]
-	fn run_with_dependencies() {}
+	async fn run_with_dependencies() {}
 
-	#[test]
+	#[tokio::test]
 	#[ignore]
-	fn run_with_recovery() {}
+	async fn run_with_recovery() {}
 }
 
 mod migrator {}
