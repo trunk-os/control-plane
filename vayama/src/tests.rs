@@ -93,4 +93,7 @@ mod migration {
 	async fn run_with_recovery() {}
 }
 
-mod migrator {}
+#[allow(unused)]
+mod migrator {
+	use super::*;
+}
