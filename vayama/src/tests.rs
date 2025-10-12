@@ -175,11 +175,47 @@ mod migration {
 
 #[allow(unused)]
 mod migrator {
+	use std::convert::Infallible;
+
+	use anyhow::Result;
+	use tempfile::TempDir;
+
 	use super::*;
 
+	fn create_migrator(migrations: Vec<Migration>) -> Result<(Migrator, TempDir)> {
+		let dir = tempfile::tempdir()?;
+		Ok((
+			Migrator::new_with_root(migrations, dir.path().to_path_buf())?,
+			dir,
+		))
+	}
+
 	#[tokio::test]
-	#[ignore]
-	async fn clean_run() {}
+	async fn clean_run() {
+		let (mut migrator, dir) = create_migrator(vec![
+			get_migration("successful_run").unwrap(),
+			get_migration("successful_run_with_successful_check").unwrap(),
+			get_migration("successful_run_with_successful_post_check").unwrap(),
+			get_migration("successful_run_with_successful_both_checks").unwrap(),
+		])
+		.unwrap();
+
+		let mut i = 0;
+
+		while let Ok(res) = migrator.execute().await {
+			assert_eq!(res.unwrap(), i);
+			i += 1;
+		}
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+
+		assert!(!migrator.more_migrations());
+	}
 
 	#[tokio::test]
 	#[ignore]

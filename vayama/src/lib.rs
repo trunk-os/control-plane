@@ -27,7 +27,7 @@ pub enum MigrationError {
 
 pub type MigrationFunc = Box<dyn FnMut() -> std::result::Result<(), MigrationError>>;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigrationState {
 	pub current_state: usize,
 	pub failed_migrations: Vec<String>,
@@ -92,10 +92,10 @@ impl Migrator {
 		if let Some(migration) = self.migrations.values_mut().nth(self.state.current_state) {
 			return match migration.execute(&self.state).await {
 				Ok(_) => {
-					self.persist_state()?;
-
 					let orig = self.state.current_state;
 					self.state.current_state += 1;
+
+					self.persist_state()?;
 
 					Ok(Some(orig))
 				}
