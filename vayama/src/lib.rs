@@ -1,10 +1,4 @@
-#![allow(unused)]
-use std::{
-	collections::BTreeMap,
-	io::{Read, Write},
-	path::PathBuf,
-	process::ExitStatus,
-};
+use std::{collections::BTreeMap, path::PathBuf, process::ExitStatus};
 
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -74,7 +68,7 @@ impl Migrator {
 	}
 
 	pub fn persist_state(&self) -> Result<()> {
-		let mut f = std::fs::OpenOptions::new()
+		let f = std::fs::OpenOptions::new()
 			.write(true)
 			.create(true)
 			.truncate(true)
