@@ -82,11 +82,7 @@ impl<'a> Migrator<'a> {
 			));
 		}
 
-		self.migrations[self.current_state]
-			.execute()
-			.await
-			.map_err(|e| Into::<anyhow::Error>::into(e))?;
-
+		self.migrations[self.current_state].execute().await?;
 		self.persist_state()?;
 
 		let orig = self.current_state;
