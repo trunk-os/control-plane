@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::{collections::BTreeSet, path::PathBuf, process::ExitStatus};
+use std::{collections::BTreeSet, path::PathBuf, pin::Pin, process::ExitStatus};
 
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -25,7 +25,11 @@ pub enum MigrationError {
 	CommandFailed(ExitStatus, Vec<String>, Option<String>),
 }
 
-pub type MigrationFunc = Box<dyn FnMut() -> std::result::Result<(), MigrationError>>;
+pub type MigrationFunc = Box<
+	dyn FnMut() -> Pin<
+		Box<dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>>,
+	>,
+>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigrationState {
@@ -163,17 +167,19 @@ impl Migration {
 		}
 
 		if let Some(check) = &mut self.check {
-			if let Err(e) = check() {
+			if let Err(e) = check().await {
 				return Err(e);
 			}
 		}
 
-		if let Err(e) = (self.run)() {
+		let call = (self.run)();
+
+		if let Err(e) = call.await {
 			return Err(e);
 		}
 
 		if let Some(post_check) = &mut self.post_check {
-			if let Err(e) = post_check() {
+			if let Err(e) = post_check().await {
 				return Err(e);
 			}
 		}

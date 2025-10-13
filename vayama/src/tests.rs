@@ -1,32 +1,50 @@
 use crate::*;
 use std::{
 	collections::BTreeSet,
-	sync::{Arc, LazyLock, Mutex},
+	sync::{Arc, LazyLock},
 };
+use tokio::sync::Mutex;
 
 static STATE: LazyLock<Arc<Mutex<BTreeSet<String>>>> = LazyLock::new(|| Default::default());
 
-fn get_state(name: &str) -> bool {
-	STATE.lock().unwrap().contains(name)
+async fn get_state(name: &str) -> bool {
+	STATE.lock().await.contains(name)
 }
 
 fn successful_run_func(name: &'static str) -> MigrationFunc {
 	Box::new(move || {
-		STATE.lock().unwrap().insert(name.to_string());
-		Ok(())
+		Box::pin(async move {
+			STATE.lock().await.insert(name.to_string());
+			Ok(())
+		})
+	})
+}
+
+fn successful_run_based_on_state_func(name: &'static str) -> MigrationFunc {
+	Box::new(|| {
+		Box::pin(async {
+			if STATE.lock().await.contains(name) {
+				Ok(())
+			} else {
+				STATE.lock().await.insert(name.to_string());
+				Err(MigrationError::Unknown)
+			}
+		})
 	})
 }
 
 fn error_run_func() -> MigrationFunc {
-	Box::new(|| Err(MigrationError::Unknown))
+	Box::new(|| Box::pin(async { Err(MigrationError::Unknown) }))
 }
 
 fn successful_check() -> Option<MigrationFunc> {
-	Some(Box::new(|| Ok(())))
+	Some(Box::new(|| Box::pin(async { Ok(()) })))
 }
 
 fn error_check() -> Option<MigrationFunc> {
-	Some(Box::new(|| Err(MigrationError::Unknown)))
+	Some(Box::new(|| {
+		Box::pin(async { Err(MigrationError::Unknown) })
+	}))
 }
 
 // this is less effort than populating a Map etc
@@ -99,14 +117,7 @@ fn get_migration(name: &'static str) -> Option<Migration> {
 			name: name.to_string(),
 			dependencies: Default::default(),
 			check: None,
-			run: Box::new(|| {
-				if STATE.lock().unwrap().contains(name) {
-					Ok(())
-				} else {
-					STATE.lock().unwrap().insert(name.to_string());
-					Err(MigrationError::Unknown)
-				}
-			}),
+			run: successful_run_based_on_state_func(name),
 			post_check: None,
 		}),
 		_ => None,
@@ -134,9 +145,9 @@ mod migration {
 	#[tokio::test]
 	async fn basic_run() {
 		assert!(execute_migration("successful_run").await.is_ok());
-		assert!(get_state("successful_run"));
+		assert!(get_state("successful_run").await);
 		assert!(execute_migration("run_only_with_error").await.is_err());
-		assert!(!get_state("run_only_with_error"));
+		assert!(!get_state("run_only_with_error").await);
 	}
 
 	#[tokio::test]
@@ -147,7 +158,7 @@ mod migration {
 			"successful_run_with_successful_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_ok());
-			assert!(get_state(name), "{}", name);
+			assert!(get_state(name).await, "{}", name);
 		}
 
 		// state is different here for post_check (run succeeded, post did not); that state check is
@@ -163,7 +174,7 @@ mod migration {
 			"successful_run_with_failing_both_checks",
 		] {
 			assert!(execute_migration(name).await.is_err());
-			assert!(!get_state(name), "{}", name);
+			assert!(!get_state(name).await, "{}", name);
 		}
 	}
 
@@ -177,7 +188,7 @@ mod migration {
 				.await
 				.is_err()
 		);
-		assert!(!get_state("successful_run_with_dependencies"));
+		assert!(!get_state("successful_run_with_dependencies").await);
 
 		state.failed_migrations = Default::default();
 		assert!(
@@ -185,7 +196,7 @@ mod migration {
 				.await
 				.is_ok()
 		);
-		assert!(get_state("successful_run_with_dependencies"))
+		assert!(get_state("successful_run_with_dependencies").await)
 	}
 }
 
