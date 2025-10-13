@@ -198,7 +198,6 @@ mod migrator {
 	use super::*;
 
 	fn create_migrator(migrations: Vec<Migration>) -> Result<(Migrator, TempDir)> {
-		STATE.lock().unwrap().clear();
 		let dir = tempfile::tempdir()?;
 		Ok((
 			Migrator::new_with_root(migrations, dir.path().to_path_buf())?,
@@ -314,10 +313,50 @@ mod migrator {
 	}
 
 	#[tokio::test]
-	#[ignore]
-	async fn run_with_failing_checks() {}
+	async fn run_with_failing_checks() {
+		let (mut migrator, dir) = create_migrator(vec![
+			get_migration("successful_run").unwrap(),
+			get_migration("successful_run_with_failing_check").unwrap(),
+			get_migration("successful_run_with_successful_check").unwrap(),
+		])
+		.unwrap();
 
-	#[tokio::test]
-	#[ignore]
-	async fn run_with_failing_dependencies() {}
+		let mut i = 0;
+
+		while let Ok(res) = migrator.execute().await {
+			if i == 1 {
+				assert_eq!(res, None);
+			} else {
+				assert_eq!(res, Some(i), "{}", i);
+			}
+
+			i += 1;
+		}
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+
+		let mut res = BTreeSet::new();
+		res.insert("successful_run_with_failing_check".into());
+		assert_eq!(migrator.state.failed_migrations, res);
+
+		assert!(!migrator.more_migrations());
+
+		assert!(migrator.execute_failed().await.is_ok());
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+
+		let mut res = BTreeSet::new();
+		res.insert("successful_run_with_failing_check".into());
+		assert_eq!(migrator.state.failed_migrations, res);
+	}
 }
