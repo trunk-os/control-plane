@@ -39,6 +39,10 @@ pub struct SystemdServiceUnit {
 }
 
 impl SystemdServiceUnit {
+	pub fn add_section(&mut self, name: String, section: HashMap<String, String>) {
+		self.sections.insert(name, section);
+	}
+
 	pub fn generate(&self) -> Result<String> {
 		let mut out = String::new();
 
@@ -92,22 +96,28 @@ mod tests {
 			sections: Default::default(),
 		};
 
-		let mut unit_section = HashMap::new();
-		unit_section.insert("Name".to_string(), "test-unit.service".into());
-		unit_section.insert("Description".to_string(), "a test service".into());
-
-		let mut service_section = HashMap::new();
-		service_section.insert("Exec".to_string(), "/usr/games/fortune".into());
-		service_section.insert("KillMode".to_string(), "pid".into());
-		service_section.insert("Restart".to_string(), "always".into());
-
-		let mut install_section = HashMap::new();
-		install_section.insert("Alias".to_string(), "also-a-test-unit.service".into());
-		install_section.insert("WantedBy".to_string(), "default.target".into());
-
-		unit.sections.insert("Unit".to_string(), unit_section);
-		unit.sections.insert("Service".to_string(), service_section);
-		unit.sections.insert("Install".to_string(), install_section);
+		unit.add_section(
+			"Unit".to_string(),
+			HashMap::from([
+				("Name".into(), "test-unit.service".into()),
+				("Description".into(), "a test service".into()),
+			]),
+		);
+		unit.add_section(
+			"Service".to_string(),
+			HashMap::from([
+				("Exec".into(), "/usr/games/fortune".into()),
+				("KillMode".into(), "pid".into()),
+				("Restart".into(), "always".into()),
+			]),
+		);
+		unit.add_section(
+			"Install".to_string(),
+			HashMap::from([
+				("Alias".into(), "also-a-test-unit.service".into()),
+				("WantedBy".into(), "default.target".into()),
+			]),
+		);
 
 		assert_eq!(
 			unit.generate().unwrap().trim(),
