@@ -39,8 +39,8 @@ pub struct SystemdServiceUnit {
 }
 
 impl SystemdServiceUnit {
-	pub fn add_section(&mut self, name: String, section: HashMap<String, String>) {
-		self.sections.insert(name, section);
+	pub fn add_section<const N: usize>(&mut self, name: String, section: [(String, String); N]) {
+		self.sections.insert(name, HashMap::from(section));
 	}
 
 	pub fn generate(&self) -> Result<String> {
@@ -98,25 +98,27 @@ mod tests {
 
 		unit.add_section(
 			"Unit".to_string(),
-			HashMap::from([
+			[
 				("Name".into(), "test-unit.service".into()),
 				("Description".into(), "a test service".into()),
-			]),
+			],
 		);
+
 		unit.add_section(
 			"Service".to_string(),
-			HashMap::from([
+			[
 				("Exec".into(), "/usr/games/fortune".into()),
 				("KillMode".into(), "pid".into()),
 				("Restart".into(), "always".into()),
-			]),
+			],
 		);
+
 		unit.add_section(
 			"Install".to_string(),
-			HashMap::from([
+			[
 				("Alias".into(), "also-a-test-unit.service".into()),
 				("WantedBy".into(), "default.target".into()),
-			]),
+			],
 		);
 
 		assert_eq!(
