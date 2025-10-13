@@ -17,7 +17,7 @@ pub async fn generic_command(command: &str, args: Vec<&str>) -> Result<String> {
 			command,
 			args,
 			output.status.code(),
-			String::from_utf8(output.stderr)?
+			String::from_utf8_lossy(&output.stderr).to_string()
 		))
 	}
 }
