@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write, path::PathBuf};
 
 use anyhow::{Result, anyhow};
 
@@ -32,7 +32,6 @@ pub async fn zfs(args: Vec<&str>) -> Result<String> {
 	generic_command(ZFS_COMMAND, args).await
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
 pub struct SystemdServiceUnit {
 	name: String,
@@ -70,7 +69,15 @@ impl SystemdServiceUnit {
 	}
 
 	pub fn write(&self) -> Result<()> {
-		Ok(())
+		let out = self.generate()?;
+		let mut f = std::fs::OpenOptions::new()
+			.create(true)
+			.write(true)
+			.truncate(true)
+			// FIXME: the root path here should be more flexible
+			.open(PathBuf::from("/etc/systemd/system").join(&format!("{}.service", self.name)))?;
+
+		Ok(f.write_all(out.as_bytes())?)
 	}
 }
 
