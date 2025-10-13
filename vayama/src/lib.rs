@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests;
 
+pub mod utils;
+
 use std::{collections::BTreeSet, path::PathBuf, pin::Pin, process::ExitStatus};
 
 use anyhow::{Result, anyhow};
