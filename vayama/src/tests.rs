@@ -201,12 +201,10 @@ mod migration {
 }
 
 mod migrator {
-	use std::collections::BTreeSet;
-
-	use anyhow::Result;
-	use tempfile::TempDir;
-
 	use super::*;
+	use anyhow::Result;
+	use std::collections::BTreeSet;
+	use tempfile::TempDir;
 
 	fn create_migrator(migrations: Vec<Migration>) -> Result<(Migrator, TempDir)> {
 		let dir = tempfile::tempdir()?;
