@@ -1,6 +1,5 @@
-use std::{collections::HashMap, io::Write, path::PathBuf};
-
 use anyhow::{Result, anyhow};
+use std::{collections::HashMap, io::Write, path::PathBuf};
 
 const PODMAN_COMMAND: &str = "podman";
 const ZFS_COMMAND: &str = "zfs";
