@@ -32,6 +32,24 @@ pub async fn zfs(args: Vec<&str>) -> Result<String> {
 	generic_command(ZFS_COMMAND, args).await
 }
 
+#[allow(unused_macros)]
+macro_rules! systemd_unit {
+	($name:expr, $(($section_name:expr, ($(($key:expr, $value:expr),)*)),)*) => {
+    {
+        let mut unit = SystemdServiceUnit {
+            name: $name.into(),
+            ..Default::default()
+        };
+
+        $(
+            unit.add_section($section_name.into(), [$(($key.into(), $value.into()),)*]);
+        )*
+
+        unit
+    }
+  };
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct SystemdServiceUnit {
 	name: String,
@@ -91,34 +109,30 @@ mod tests {
 
 	#[test]
 	fn systemd_unit_generate() {
-		let mut unit = SystemdServiceUnit {
-			name: "test-unit".into(),
-			sections: Default::default(),
-		};
-
-		unit.add_section(
-			"Unit".to_string(),
-			[
-				("Name".into(), "test-unit.service".into()),
-				("Description".into(), "a test service".into()),
-			],
-		);
-
-		unit.add_section(
-			"Service".to_string(),
-			[
-				("Exec".into(), "/usr/games/fortune".into()),
-				("KillMode".into(), "pid".into()),
-				("Restart".into(), "always".into()),
-			],
-		);
-
-		unit.add_section(
-			"Install".to_string(),
-			[
-				("Alias".into(), "also-a-test-unit.service".into()),
-				("WantedBy".into(), "default.target".into()),
-			],
+		let unit = systemd_unit!(
+			"test-unit",
+			(
+				"Unit",
+				(
+					("Name", "test-unit.service"),
+					("Description", "a test service"),
+				)
+			),
+			(
+				"Install",
+				(
+					("Alias", "also-a-test-unit.service"),
+					("WantedBy", "default.target"),
+				)
+			),
+			(
+				"Service",
+				(
+					("Exec", "/usr/games/fortune"),
+					("KillMode", "pid"),
+					("Restart", "always"),
+				)
+			),
 		);
 
 		assert_eq!(
