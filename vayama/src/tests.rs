@@ -95,6 +95,20 @@ fn get_migration(name: &'static str) -> Option<Migration> {
 			run: successful_run_func(name),
 			post_check: None,
 		}),
+		"successful_run_based_on_state" => Some(Migration {
+			name: name.to_string(),
+			dependencies: Default::default(),
+			check: None,
+			run: Box::new(|| {
+				if STATE.lock().unwrap().contains_key(name) {
+					Ok(())
+				} else {
+					STATE.lock().unwrap().insert(name.to_string(), true);
+					Err(MigrationError::Unknown)
+				}
+			}),
+			post_check: None,
+		}),
 		_ => None,
 	}
 }
@@ -184,6 +198,7 @@ mod migrator {
 	use super::*;
 
 	fn create_migrator(migrations: Vec<Migration>) -> Result<(Migrator, TempDir)> {
+		STATE.lock().unwrap().clear();
 		let dir = tempfile::tempdir()?;
 		Ok((
 			Migrator::new_with_root(migrations, dir.path().to_path_buf())?,
@@ -254,8 +269,49 @@ mod migrator {
 	}
 
 	#[tokio::test]
-	#[ignore]
-	async fn run_twice_with_new_migrations() {}
+	async fn run_twice_with_new_migrations() {
+		let (mut migrator, dir) = create_migrator(vec![
+			get_migration("successful_run_based_on_state").unwrap(),
+			get_migration("successful_run").unwrap(),
+			get_migration("successful_run_with_successful_check").unwrap(),
+		])
+		.unwrap();
+
+		let mut i = 0;
+
+		while let Ok(res) = migrator.execute().await {
+			if i == 0 {
+				assert_eq!(res, None);
+			} else {
+				assert_eq!(res, Some(i), "{}", i);
+			}
+
+			i += 1;
+		}
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+
+		let mut res = BTreeSet::new();
+		res.insert("successful_run_based_on_state".into());
+		assert_eq!(migrator.state.failed_migrations, res);
+
+		assert!(!migrator.more_migrations());
+
+		assert!(migrator.execute_failed().await.is_ok());
+
+		let mut f = std::fs::OpenOptions::new()
+			.read(true)
+			.open(dir.path().join(MIGRATION_FILENAME))
+			.unwrap();
+		let state: MigrationState = serde_json::from_reader(&mut f).unwrap();
+		assert_eq!(migrator.state, state);
+		assert_eq!(migrator.state.failed_migrations, Default::default());
+	}
 
 	#[tokio::test]
 	#[ignore]
@@ -264,8 +320,4 @@ mod migrator {
 	#[tokio::test]
 	#[ignore]
 	async fn run_with_failing_dependencies() {}
-
-	#[tokio::test]
-	#[ignore]
-	async fn run_with_recovery() {}
 }

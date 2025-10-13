@@ -1,11 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::{
-	collections::{BTreeMap, BTreeSet},
-	path::PathBuf,
-	process::ExitStatus,
-};
+use std::{collections::BTreeSet, path::PathBuf, process::ExitStatus};
 
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -41,7 +37,7 @@ pub struct MigrationState {
 pub struct Migrator {
 	pub state_file: PathBuf,
 	pub state: MigrationState,
-	pub migrations: BTreeMap<String, Migration>,
+	pub migrations: Vec<Migration>,
 }
 
 impl Migrator {
@@ -57,16 +53,10 @@ impl Migrator {
 			Err(_) => MigrationState::default(),
 		};
 
-		let mut bt_migrations = BTreeMap::default();
-
-		for migration in migrations {
-			bt_migrations.insert(migration.name.clone(), migration);
-		}
-
 		Ok(Self {
 			state_file,
 			state,
-			migrations: bt_migrations,
+			migrations,
 		})
 	}
 
@@ -87,7 +77,7 @@ impl Migrator {
 	pub async fn execute_failed(&mut self) -> Result<()> {
 		let failed_migrations = self.state.failed_migrations.clone();
 		for failed in &failed_migrations {
-			if let Some(migration) = self.migrations.get_mut(failed) {
+			if let Some(migration) = self.migrations.iter_mut().find(|x| &x.name == failed) {
 				match migration.execute(&self.state).await {
 					Ok(_) => {
 						self.state.failed_migrations.remove(failed);
@@ -116,7 +106,7 @@ impl Migrator {
 			));
 		}
 
-		if let Some(migration) = self.migrations.values_mut().nth(self.state.current_state) {
+		if let Some(migration) = self.migrations.get_mut(self.state.current_state) {
 			let orig = self.state.current_state;
 			self.state.current_state += 1;
 
