@@ -5,6 +5,8 @@ use std::{
 };
 use tokio::sync::Mutex;
 
+// NOTE: because of this state thingy, the tests are a little more eager to produce false
+// negatives. This really, really needs to be gutted.
 static STATE: LazyLock<Arc<Mutex<BTreeSet<String>>>> = LazyLock::new(|| Default::default());
 
 async fn get_state(name: &str) -> bool {
