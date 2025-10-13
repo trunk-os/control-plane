@@ -1,18 +1,18 @@
 use crate::*;
 use std::{
-	collections::BTreeMap,
+	collections::BTreeSet,
 	sync::{Arc, LazyLock, Mutex},
 };
 
-static STATE: LazyLock<Arc<Mutex<BTreeMap<String, bool>>>> = LazyLock::new(|| Default::default());
+static STATE: LazyLock<Arc<Mutex<BTreeSet<String>>>> = LazyLock::new(|| Default::default());
 
 fn get_state(name: &str) -> bool {
-	*STATE.lock().unwrap().get(name).unwrap_or(&false)
+	STATE.lock().unwrap().contains(name)
 }
 
 fn successful_run_func(name: &'static str) -> MigrationFunc {
 	Box::new(move || {
-		STATE.lock().unwrap().insert(name.to_string(), true);
+		STATE.lock().unwrap().insert(name.to_string());
 		Ok(())
 	})
 }
@@ -100,10 +100,10 @@ fn get_migration(name: &'static str) -> Option<Migration> {
 			dependencies: Default::default(),
 			check: None,
 			run: Box::new(|| {
-				if STATE.lock().unwrap().contains_key(name) {
+				if STATE.lock().unwrap().contains(name) {
 					Ok(())
 				} else {
-					STATE.lock().unwrap().insert(name.to_string(), true);
+					STATE.lock().unwrap().insert(name.to_string());
 					Err(MigrationError::Unknown)
 				}
 			}),
