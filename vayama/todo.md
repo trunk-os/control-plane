@@ -1,3 +1,1 @@
-- common functions for checks & run stuff
-- shuffle state files to avoid race conditions
 - find a clean way to package this in buckle

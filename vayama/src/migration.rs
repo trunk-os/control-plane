@@ -1,9 +1,15 @@
-use std::{collections::BTreeSet, path::PathBuf, pin::Pin, process::ExitStatus};
+use std::{
+	collections::BTreeSet,
+	path::{Path, PathBuf},
+	pin::Pin,
+	process::ExitStatus,
+};
 
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub(crate) const MIGRATION_FILENAME_TEMP: &str = "vayama.state.tmp";
 pub(crate) const MIGRATION_FILENAME: &str = "vayama.state";
 pub(crate) const DEFAULT_ROOT: &str = "/etc";
 
@@ -41,7 +47,7 @@ pub struct MigrationState {
 
 #[derive(Debug, Default)]
 pub struct Migrator {
-	pub state_file: PathBuf,
+	pub state_dir: PathBuf,
 	pub state: MigrationState,
 	pub migrations: Vec<Migration>,
 }
@@ -51,19 +57,32 @@ impl Migrator {
 		Self::new_with_root(migrations, PathBuf::from(DEFAULT_ROOT))
 	}
 
-	pub fn new_with_root(migrations: Vec<Migration>, root: PathBuf) -> Result<Self> {
-		let state_file = root.join(MIGRATION_FILENAME);
+	pub fn state_from_file(state_file: &Path) -> Result<MigrationState> {
+		let mut f = std::fs::OpenOptions::new().read(true).open(state_file)?;
 
-		let state: MigrationState = match std::fs::OpenOptions::new().read(true).open(&state_file) {
-			Ok(mut f) => serde_json::from_reader(&mut f).unwrap_or_default(),
-			Err(_) => MigrationState::default(),
+		Ok(serde_json::from_reader(&mut f)?)
+	}
+
+	pub fn new_with_root(migrations: Vec<Migration>, state_dir: PathBuf) -> Result<Self> {
+		let state_file = state_dir.join(MIGRATION_FILENAME);
+
+		let state = match Self::state_from_file(&state_file) {
+			Ok(state) => state,
+			Err(_) => match Self::state_from_file(&state_dir.join(MIGRATION_FILENAME_TEMP)) {
+				Ok(state) => state,
+				Err(_) => Default::default(),
+			},
 		};
 
-		Ok(Self {
-			state_file,
+		let this = Self {
+			state_dir,
 			state,
 			migrations,
-		})
+		};
+
+		this.persist_state()?;
+
+		Ok(this)
 	}
 
 	pub fn more_migrations(&self) -> bool {
@@ -75,9 +94,14 @@ impl Migrator {
 			.write(true)
 			.create(true)
 			.truncate(true)
-			.open(&self.state_file)?;
+			.open(&self.state_dir.join(MIGRATION_FILENAME_TEMP))?;
 
-		Ok(serde_json::to_writer(f, &self.state)?)
+		serde_json::to_writer(f, &self.state)?;
+
+		Ok(std::fs::rename(
+			self.state_dir.join(MIGRATION_FILENAME_TEMP),
+			self.state_dir.join(MIGRATION_FILENAME),
+		)?)
 	}
 
 	pub async fn execute_failed(&mut self) -> Result<()> {
