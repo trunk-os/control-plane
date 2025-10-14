@@ -23,6 +23,7 @@ pub enum MigrationError {
 }
 
 #[macro_export]
+// NOTE: the block you provide here will be executed with async coloring.
 macro_rules! migration_func {
 	($func:block) => {{ Box::new(move || Box::pin(async move { $func })) }};
 }
@@ -189,6 +190,29 @@ impl std::fmt::Debug for Migration {
 }
 
 impl Migration {
+	// Create a struct by hand if you want anything more complicated; this is just to simplify
+	// common cases.
+
+	pub fn new(name: String, run: MigrationFunc) -> Self {
+		Self {
+			name,
+			run,
+			check: None,
+			post_check: None,
+			dependencies: Default::default(),
+		}
+	}
+
+	pub fn new_with_check(name: String, run: MigrationFunc, check: MigrationFunc) -> Self {
+		Self {
+			name,
+			run,
+			check: Some(check),
+			post_check: None,
+			dependencies: Default::default(),
+		}
+	}
+
 	pub async fn execute(
 		&mut self, state: &MigrationState, dependencies: Vec<String>,
 	) -> std::result::Result<(), MigrationError> {
