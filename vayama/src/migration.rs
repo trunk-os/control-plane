@@ -146,32 +146,30 @@ impl Migrator {
 		}
 
 		let deps = self.migration_dependencies(self.state.current_state);
-		if let Some(migration) = self.migrations.get_mut(self.state.current_state) {
-			let orig = self.state.current_state;
-			self.state.current_state += 1;
+		let migration = self.migrations.get_mut(self.state.current_state).unwrap();
 
-			return match migration.execute(&self.state, deps).await {
-				Ok(_) => {
-					self.persist_state()?;
+		let orig = self.state.current_state;
+		self.state.current_state += 1;
 
-					Ok(Some(orig))
-				}
-				Err(e) => {
-					tracing::error!(
-						"Error during vayama migration '{}'. Marking failed: {}",
-						migration.name,
-						e
-					);
+		return match migration.execute(&self.state, deps).await {
+			Ok(_) => {
+				self.persist_state()?;
 
-					self.state.failed_migrations.insert(migration.name.clone());
-					self.persist_state()?;
+				Ok(Some(orig))
+			}
+			Err(e) => {
+				tracing::error!(
+					"Error during vayama migration '{}'. Marking failed: {}",
+					migration.name,
+					e
+				);
 
-					Ok(None)
-				}
-			};
-		}
+				self.state.failed_migrations.insert(migration.name.clone());
+				self.persist_state()?;
 
-		Err(anyhow!("More migrations were reported but none were found"))
+				Ok(None)
+			}
+		};
 	}
 }
 
