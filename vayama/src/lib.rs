@@ -82,16 +82,19 @@ impl Migrator {
 
 	pub async fn execute_failed(&mut self) -> Result<()> {
 		let failed_migrations = self.state.failed_migrations.clone();
-		for failed in &failed_migrations {
-			if let Some(migration) = self.migrations.iter_mut().find(|x| &x.name == failed) {
-				match migration.execute(&self.state).await {
+		let migration_names: Vec<String> = self.migrations.iter().map(|x| x.name.clone()).collect();
+
+		for (index, name) in migration_names.iter().enumerate() {
+			if failed_migrations.contains(name) {
+				let deps = self.migration_dependencies(index);
+				match self.migrations[index].execute(&self.state, deps).await {
 					Ok(_) => {
-						self.state.failed_migrations.remove(failed);
+						self.state.failed_migrations.remove(name);
 					}
 					Err(e) => {
 						tracing::error!(
 							"Error during vayama migration '{}'. Marking failed: {}",
-							migration.name,
+							self.migrations[index].name,
 							e
 						);
 					}
@@ -103,6 +106,36 @@ impl Migrator {
 		Ok(())
 	}
 
+	pub fn migration_dependencies(&mut self, index: usize) -> Vec<String> {
+		let mut deps = BTreeSet::new();
+
+		for dep in &self.migrations[index].dependencies {
+			deps.insert(dep.clone());
+		}
+
+		let mut last_len = 0;
+		let mut current_len = deps.len();
+		while last_len != current_len {
+			last_len = current_len;
+			// iterate each dependency and collect its dependencies. Stop processing when we know we
+			// haven't processed anything new.
+			//
+			// NOTE: Do not attempt sort them in execution order
+			// (tsort) as only existence is necessary for our work.
+			for dep in deps.clone() {
+				if let Some(m) = self.migrations.iter().find(|x| x.name == dep) {
+					for dep in &m.dependencies {
+						deps.insert(dep.clone());
+					}
+				}
+			}
+
+			current_len = deps.len();
+		}
+
+		deps.iter().map(Clone::clone).collect::<Vec<String>>()
+	}
+
 	pub async fn execute(&mut self) -> Result<Option<usize>> {
 		if !self.more_migrations() {
 			return Err(anyhow!(
@@ -112,11 +145,12 @@ impl Migrator {
 			));
 		}
 
+		let deps = self.migration_dependencies(self.state.current_state);
 		if let Some(migration) = self.migrations.get_mut(self.state.current_state) {
 			let orig = self.state.current_state;
 			self.state.current_state += 1;
 
-			return match migration.execute(&self.state).await {
+			return match migration.execute(&self.state, deps).await {
 				Ok(_) => {
 					self.persist_state()?;
 
@@ -157,10 +191,10 @@ impl std::fmt::Debug for Migration {
 
 impl Migration {
 	pub async fn execute(
-		&mut self, state: &MigrationState,
+		&mut self, state: &MigrationState, dependencies: Vec<String>,
 	) -> std::result::Result<(), MigrationError> {
 		for migration in &state.failed_migrations {
-			if self.dependencies.contains(migration) {
+			if self.dependencies.contains(migration) || dependencies.contains(migration) {
 				return Err(MigrationError::DependencyFailed(
 					self.name.clone(),
 					migration.clone(),
