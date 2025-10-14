@@ -27,10 +27,8 @@ macro_rules! migration_func {
 	($func:block) => {{ Box::new(move || Box::pin(async move { $func })) }};
 }
 
-pub type MigrationInnerFunc =
-	dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>;
-
-pub type MigrationAsyncFunc = Pin<Box<MigrationInnerFunc>>;
+pub type MigrationAsyncFunc =
+	Pin<Box<dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>>>;
 
 pub type MigrationFunc = Box<dyn FnMut() -> MigrationAsyncFunc>;
 
