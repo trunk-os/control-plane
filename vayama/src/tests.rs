@@ -14,39 +14,33 @@ async fn get_state(name: &str) -> bool {
 }
 
 fn successful_run_func(name: &'static str) -> MigrationFunc {
-	Box::new(move || {
-		Box::pin(async move {
-			STATE.lock().await.insert(name.to_string());
-			Ok(())
-		})
+	migration_func!({
+		STATE.lock().await.insert(name.to_string());
+		Ok(())
 	})
 }
 
 fn successful_run_based_on_state_func(name: &'static str) -> MigrationFunc {
-	Box::new(|| {
-		Box::pin(async {
-			if STATE.lock().await.contains(name) {
-				Ok(())
-			} else {
-				STATE.lock().await.insert(name.to_string());
-				Err(MigrationError::Unknown)
-			}
-		})
+	migration_func!({
+		if STATE.lock().await.contains(name) {
+			Ok(())
+		} else {
+			STATE.lock().await.insert(name.to_string());
+			Err(MigrationError::Unknown)
+		}
 	})
 }
 
 fn error_run_func() -> MigrationFunc {
-	Box::new(|| Box::pin(async { Err(MigrationError::Unknown) }))
+	migration_func!({ Err(MigrationError::Unknown) })
 }
 
 fn successful_check() -> Option<MigrationFunc> {
-	Some(Box::new(|| Box::pin(async { Ok(()) })))
+	Some(migration_func!({ Ok(()) }))
 }
 
 fn error_check() -> Option<MigrationFunc> {
-	Some(Box::new(|| {
-		Box::pin(async { Err(MigrationError::Unknown) })
-	}))
+	Some(migration_func!({ Err(MigrationError::Unknown) }))
 }
 
 // this is less effort than populating a Map etc

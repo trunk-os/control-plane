@@ -31,7 +31,7 @@ pub async fn zfs(args: Vec<&str>) -> Result<String> {
 	generic_command(ZFS_COMMAND, args).await
 }
 
-#[allow(unused_macros)]
+#[macro_export]
 macro_rules! systemd_unit {
 	($name:expr, $(($section_name:expr, ($(($key:expr, $value:expr),)*)),)*) => {
     {

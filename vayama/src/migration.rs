@@ -22,11 +22,17 @@ pub enum MigrationError {
 	CommandFailed(ExitStatus, Vec<String>, Option<String>),
 }
 
-pub type MigrationFunc = Box<
-	dyn FnMut() -> Pin<
-		Box<dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>>,
-	>,
->;
+#[macro_export]
+macro_rules! migration_func {
+	($func:block) => {{ Box::new(move || Box::pin(async move { $func })) }};
+}
+
+pub type MigrationInnerFunc =
+	dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>;
+
+pub type MigrationAsyncFunc = Pin<Box<MigrationInnerFunc>>;
+
+pub type MigrationFunc = Box<dyn FnMut() -> MigrationAsyncFunc>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigrationState {
