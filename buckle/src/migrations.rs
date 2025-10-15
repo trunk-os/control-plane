@@ -12,16 +12,20 @@ use vayama::{utils::*, *};
 pub struct MigrationPlan {
 	migrator: Migrator,
 	root: PathBuf,
+	zpool: String,
 }
 
 impl MigrationPlan {
-	pub fn new(migrator: Migrator) -> Self {
-		Self::new_with_root(migrator, None)
-	}
-
-	pub fn new_with_root(migrator: Migrator, root: Option<PathBuf>) -> Self {
+	pub fn new(migrator: Migrator, root: Option<PathBuf>, zpool: Option<String>) -> Self {
 		let root = root.unwrap_or(PathBuf::from("/"));
-		Self { migrator, root }
+		// FIXME: defaults like this should be a constant somewhere
+		let zpool = zpool.unwrap_or("trunk".into());
+
+		Self {
+			migrator,
+			root,
+			zpool,
+		}
 	}
 
 	pub fn join_root<'a>(&self, target: impl Into<&'a Path> + AsRef<Path>) -> PathBuf {
@@ -37,13 +41,10 @@ impl MigrationPlan {
 		let mut f = tempfile::NamedTempFile::new()?;
 		f.write_all(out)?;
 
-		std::fs::rename(f.path(), p)?;
-		Ok(())
+		Ok(std::fs::rename(f.path(), p)?)
 	}
 
-	pub async fn read_file<'a>(
-		&self, target: impl Into<&'a Path> + AsRef<Path>,
-	) -> Result<Vec<u8>> {
+	pub fn read_file<'a>(&self, target: impl Into<&'a Path> + AsRef<Path>) -> Result<Vec<u8>> {
 		let p = self.join_root(target);
 
 		let mut f = std::fs::OpenOptions::new().read(true).open(p)?;
@@ -51,5 +52,9 @@ impl MigrationPlan {
 		f.read_to_end(&mut v)?;
 
 		Ok(v)
+	}
+
+	pub fn exists_file<'a>(&self, target: impl Into<&'a Path> + AsRef<Path>) -> Result<bool> {
+		Ok(std::fs::exists(self.join_root(target))?)
 	}
 }
