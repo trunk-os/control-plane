@@ -89,14 +89,17 @@ impl SystemdServiceUnit {
 		Ok(out)
 	}
 
-	pub fn write(&self) -> Result<()> {
+	pub fn write(&self, root: Option<PathBuf>) -> Result<()> {
 		let out = self.generate()?;
 		let mut f = std::fs::OpenOptions::new()
 			.create(true)
 			.write(true)
 			.truncate(true)
 			// FIXME: the root path here should be more flexible
-			.open(PathBuf::from("/etc/systemd/system").join(&format!("{}.service", self.name)))?;
+			.open(
+				root.unwrap_or(PathBuf::from("/etc/systemd/system"))
+					.join(&format!("{}.service", self.name)),
+			)?;
 
 		Ok(f.write_all(out.as_bytes())?)
 	}

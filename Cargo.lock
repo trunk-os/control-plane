@@ -465,6 +465,7 @@ dependencies = [
  "tonic-prost-build",
  "tracing",
  "tracing-subscriber",
+ "vayama",
  "zbus_systemd",
 ]
 
