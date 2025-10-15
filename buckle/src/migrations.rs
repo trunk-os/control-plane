@@ -3,10 +3,9 @@
 #![allow(unused_imports, dead_code)]
 use anyhow::Result;
 use std::{
-	io::Write,
+	io::{Read, Write},
 	path::{Path, PathBuf},
 };
-use tokio::io::AsyncReadExt;
 use vayama::{utils::*, *};
 
 #[derive(Debug, Default)]
@@ -29,7 +28,7 @@ impl MigrationPlan {
 		self.root.join(target)
 	}
 
-	pub async fn write_file<'a>(
+	pub fn write_file<'a>(
 		&self, target: impl Into<&'a Path> + AsRef<Path>, out: &[u8],
 	) -> Result<()> {
 		let p = self.join_root(target);
@@ -47,9 +46,9 @@ impl MigrationPlan {
 	) -> Result<Vec<u8>> {
 		let p = self.join_root(target);
 
-		let mut f = tokio::fs::OpenOptions::new().read(true).open(p).await?;
+		let mut f = std::fs::OpenOptions::new().read(true).open(p)?;
 		let mut v = Vec::new();
-		f.read_to_end(&mut v).await?;
+		f.read_to_end(&mut v)?;
 
 		Ok(v)
 	}
