@@ -95,7 +95,6 @@ impl SystemdServiceUnit {
 			.create(true)
 			.write(true)
 			.truncate(true)
-			// FIXME: the root path here should be more flexible
 			.open(
 				root.unwrap_or(PathBuf::from("/etc/systemd/system"))
 					.join(&format!("{}.service", self.name)),
