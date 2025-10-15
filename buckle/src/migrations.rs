@@ -6,7 +6,7 @@ use std::{
 	io::Write,
 	path::{Path, PathBuf},
 };
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
 use vayama::{utils::*, *};
 
 #[derive(Debug, Default)]
