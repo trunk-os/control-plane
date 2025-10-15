@@ -31,7 +31,7 @@ pub enum MigrationError {
 #[macro_export]
 // NOTE: the block you provide here will be executed with async coloring.
 macro_rules! migration_func {
-	($func:block) => {{ Box::new(move || Box::pin(async move { $func })) }};
+	($func:block) => {{ Box::new(|| Box::pin(async { $func })) }};
 }
 
 pub type MigrationAsyncFunc =
