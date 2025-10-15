@@ -234,7 +234,7 @@ mod migrator {
 	fn create_migrator(migrations: Vec<Migration>) -> Result<(Migrator, TempDir)> {
 		let dir = tempfile::tempdir()?;
 		Ok((
-			Migrator::new_with_root(migrations, dir.path().to_path_buf())?,
+			Migrator::new_with_root(migrations, Some(dir.path().to_path_buf()))?,
 			dir,
 		))
 	}

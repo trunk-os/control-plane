@@ -54,7 +54,7 @@ pub struct Migrator {
 
 impl Migrator {
 	pub fn new(migrations: Vec<Migration>) -> Result<Self> {
-		Self::new_with_root(migrations, PathBuf::from(DEFAULT_ROOT))
+		Self::new_with_root(migrations, None)
 	}
 
 	pub fn state_from_file(state_file: &Path) -> Result<MigrationState> {
@@ -63,7 +63,8 @@ impl Migrator {
 		Ok(serde_json::from_reader(&mut f)?)
 	}
 
-	pub fn new_with_root(migrations: Vec<Migration>, state_dir: PathBuf) -> Result<Self> {
+	pub fn new_with_root(migrations: Vec<Migration>, state_dir: Option<PathBuf>) -> Result<Self> {
+		let state_dir = state_dir.unwrap_or(PathBuf::from(DEFAULT_ROOT));
 		let state_file = state_dir.join(MIGRATION_FILENAME);
 
 		let state = match Self::state_from_file(&state_file) {

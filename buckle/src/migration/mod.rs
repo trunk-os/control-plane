@@ -1,12 +1,13 @@
 // please see the `vayama` library for tooling.
-
 #![allow(unused_imports, dead_code)]
 use anyhow::Result;
 use std::{
 	io::{Read, Write},
 	path::{Path, PathBuf},
 };
-use vayama::{utils::*, *};
+use vayama::Migrator;
+
+pub(crate) mod plan;
 
 #[derive(Debug, Default)]
 pub struct MigrationPlan {
