@@ -28,6 +28,20 @@ impl MigrationPlan {
 		}
 	}
 
+	pub async fn execute(&mut self) -> Result<usize> {
+		self.migrator.execute_failed().await?;
+
+		let mut latest_migration = 0;
+
+		while let Ok(res) = self.migrator.execute().await {
+			if let Some(latest) = res {
+				latest_migration = latest;
+			}
+		}
+
+		Ok(latest_migration)
+	}
+
 	pub fn join_root<'a>(&self, target: impl Into<&'a Path> + AsRef<Path>) -> PathBuf {
 		self.root.join(target)
 	}
