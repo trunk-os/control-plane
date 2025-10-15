@@ -159,7 +159,7 @@ async fn execute_migration_with_state(
 ) -> Result<(), MigrationError> {
 	get_migration(name)
 		.expect(&format!("test migration ({}) missing from table", name))
-		.execute(&state, Default::default())
+		.execute(&state, Default::default(), &Default::default())
 		.await
 }
 

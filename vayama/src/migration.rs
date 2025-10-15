@@ -119,7 +119,10 @@ impl Migrator {
 		for (index, name) in migration_names.iter().enumerate() {
 			if failed_migrations.contains(name) {
 				let deps = self.migration_dependencies(index);
-				match self.migrations[index].execute(&self.state, deps).await {
+				match self.migrations[index]
+					.execute(&self.state, deps, &self.runtime_state)
+					.await
+				{
 					Ok(_) => {
 						self.state.failed_migrations.remove(name);
 					}
@@ -183,7 +186,10 @@ impl Migrator {
 		let orig = self.state.current_state;
 		self.state.current_state += 1;
 
-		return match migration.execute(&self.state, deps).await {
+		return match migration
+			.execute(&self.state, deps, &self.runtime_state)
+			.await
+		{
 			Ok(_) => {
 				self.persist_state()?;
 
@@ -245,6 +251,7 @@ impl Migration {
 
 	pub async fn execute(
 		&mut self, state: &MigrationState, dependencies: Vec<String>,
+		_runtime_state: &MigrationRuntimeState,
 	) -> std::result::Result<(), MigrationError> {
 		for migration in &state.failed_migrations {
 			if self.dependencies.contains(migration) || dependencies.contains(migration) {
