@@ -1,5 +1,5 @@
 // please see the `vayama` library for tooling.
-#![allow(unused_imports, dead_code)]
+#![allow(dead_code)]
 use anyhow::Result;
 use std::{
 	io::{Read, Write},
