@@ -1,5 +1,5 @@
 use std::{
-	collections::BTreeSet,
+	collections::{BTreeSet, HashMap},
 	path::{Path, PathBuf},
 	pin::Pin,
 	process::ExitStatus,
@@ -39,6 +39,8 @@ pub type MigrationAsyncFunc =
 
 pub type MigrationFunc = Box<dyn FnMut() -> MigrationAsyncFunc>;
 
+pub type MigrationRuntimeState = HashMap<String, String>;
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct MigrationState {
 	pub current_state: usize,
@@ -49,21 +51,19 @@ pub struct MigrationState {
 pub struct Migrator {
 	pub state_dir: PathBuf,
 	pub state: MigrationState,
+	pub runtime_state: MigrationRuntimeState,
 	pub migrations: Vec<Migration>,
 }
 
 impl Migrator {
-	pub fn new(migrations: Vec<Migration>) -> Result<Self> {
-		Self::new_with_root(migrations, None)
+	pub fn new(migrations: Vec<Migration>, runtime_state: MigrationRuntimeState) -> Result<Self> {
+		Self::new_with_root(migrations, runtime_state, None)
 	}
 
-	pub fn state_from_file(state_file: &Path) -> Result<MigrationState> {
-		let mut f = std::fs::OpenOptions::new().read(true).open(state_file)?;
-
-		Ok(serde_json::from_reader(&mut f)?)
-	}
-
-	pub fn new_with_root(migrations: Vec<Migration>, state_dir: Option<PathBuf>) -> Result<Self> {
+	pub fn new_with_root(
+		migrations: Vec<Migration>, runtime_state: MigrationRuntimeState,
+		state_dir: Option<PathBuf>,
+	) -> Result<Self> {
 		let state_dir = state_dir.unwrap_or(PathBuf::from(DEFAULT_ROOT));
 		let state_file = state_dir.join(MIGRATION_FILENAME);
 
@@ -78,12 +78,19 @@ impl Migrator {
 		let this = Self {
 			state_dir,
 			state,
+			runtime_state,
 			migrations,
 		};
 
 		this.persist_state()?;
 
 		Ok(this)
+	}
+
+	pub fn state_from_file(state_file: &Path) -> Result<MigrationState> {
+		let mut f = std::fs::OpenOptions::new().read(true).open(state_file)?;
+
+		Ok(serde_json::from_reader(&mut f)?)
 	}
 
 	pub fn more_migrations(&self) -> bool {

@@ -33,7 +33,7 @@ fn migrations() -> Vec<Migration> {
 pub(crate) async fn load_migrations(
 	root: Option<PathBuf>, zpool: Option<String>,
 ) -> Result<MigrationPlan> {
-	let migrator = Migrator::new_with_root(migrations(), root.clone())?;
+	let migrator = Migrator::new_with_root(migrations(), Default::default(), root.clone())?;
 
 	Ok(MigrationPlan::new(migrator, root, zpool))
 }
