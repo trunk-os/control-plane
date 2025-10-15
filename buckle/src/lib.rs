@@ -2,7 +2,7 @@ pub mod client;
 pub mod config;
 pub(crate) mod grpc;
 pub(crate) mod middleware;
-pub(crate) mod migrations;
+pub(crate) mod migration;
 pub mod server;
 pub(crate) mod sysinfo;
 pub mod systemd;
