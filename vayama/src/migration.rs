@@ -35,7 +35,7 @@ macro_rules! migration_func {
 }
 
 pub type MigrationAsyncFunc =
-	Pin<Box<dyn 'static + Send + Future<Output = std::result::Result<(), MigrationError>>>>;
+	Pin<Box<dyn Send + Future<Output = std::result::Result<(), MigrationError>>>>;
 
 pub type MigrationFunc = Box<dyn FnMut() -> MigrationAsyncFunc>;
 
