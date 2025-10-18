@@ -225,6 +225,18 @@ impl std::fmt::Debug for Migration {
 	}
 }
 
+impl Default for Migration {
+	fn default() -> Self {
+		Self {
+			name: Default::default(),
+			dependencies: Default::default(),
+			check: Default::default(),
+			post_check: Default::default(),
+			run: migration_func!({ Ok(()) }),
+		}
+	}
+}
+
 impl Migration {
 	// Create a struct by hand if you want anything more complicated; this is just to simplify
 	// common cases.

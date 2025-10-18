@@ -3,30 +3,54 @@ use anyhow::Result;
 use std::path::PathBuf;
 use vayama::{Migration, Migrator, migration_func, utils::*};
 
+#[macro_export]
+macro_rules! build_migration {
+	($name:expr, $run:block, $($key:ident => $value:block),*) => {
+		Migration {
+			name: $name.into(),
+			run: migration_func!($run),
+      dependencies: Default::default(),
+      $(
+			$key: Some(migration_func!($value)),
+      )*
+      ..Default::default()
+		}
+	};
+	($name:expr, $run:block, dependencies => $deps:expr, $($key:ident => $value:block),*) => {
+		Migration {
+			name: $name.into(),
+			run: migration_func!($run),
+      dependencies: $deps,
+      $(
+			$key: Some(migration_func!($value)),
+      )*
+      ..Default::default()
+		}
+	};
+}
+
 fn migrations() -> Vec<Migration> {
 	vec![
-		Migration::new_with_check(
-			"ensure node_exporter".into(),
-			migration_func!({ Ok(()) }),
-			migration_func!({ Ok(()) }),
+		build_migration!("ensure node_exporter",
+			{ Ok(()) },
+			check => { Ok(()) }
 		),
-		Migration::new_with_check(
-			"ensure prometheus".into(),
-			migration_func!({ Ok(()) }),
-			migration_func!({ Ok(()) }),
+		build_migration!("ensure prometheus",
+			{ Ok(()) },
+			check => { Ok(()) }
 		),
-		Migration::new_with_check(
-			"ensure grafana".into(),
-			migration_func!({ Ok(()) }),
-			migration_func!({ Ok(()) }),
+		build_migration!("ensure grafana",
+			{ Ok(()) },
+			check => { Ok(()) }
 		),
-		Migration {
-			name: "link grafana and prometheus".into(),
-			run: migration_func!({ Ok(()) }),
-			dependencies: vec!["ensure prometheus".into(), "ensure grafana".into()],
-			check: None,
-			post_check: Some(migration_func!({ Ok(()) })),
-		},
+		build_migration!("link grafana and prometheus",
+			{ Ok(()) },
+			dependencies => vec![
+				"ensure_prometheus".into(),
+				"ensure grafana".into(),
+			],
+			post_check => { Ok(()) }
+		),
 	]
 }
 
