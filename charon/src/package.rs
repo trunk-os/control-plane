@@ -809,33 +809,52 @@ impl Registry {
 	}
 
 	pub fn installed(&self) -> Result<Vec<PackageTitle>> {
-		let mut v = Vec::new();
-
-		let items = std::fs::read_dir(self.root.join(INSTALLED_SUBPATH))?;
-
-		for item in items {
-			let item = item?;
-			if item.metadata()?.is_dir() {
-				let path = item.path();
-				let name = path.file_name().unwrap().to_str().unwrap();
-				let inner = std::fs::read_dir(item.path())?;
-
-				for item in inner {
+		let installed_path = self.root.join(INSTALLED_SUBPATH);
+		match std::fs::read_dir(&installed_path) {
+			Ok(items) => {
+				let mut v = Vec::new();
+				for item in items {
 					let item = item?;
-					if item.metadata()?.is_file() {
+					if item.metadata()?.is_dir() {
 						let path = item.path();
-						let version = path.file_name().unwrap().to_str().unwrap();
+						let name = path.file_name().unwrap().to_str().unwrap();
+						let inner = std::fs::read_dir(item.path())?;
 
-						v.push(PackageTitle {
-							name: name.to_string(),
-							version: version.to_string(),
-						});
+						for item in inner {
+							let item = item?;
+							if item.metadata()?.is_file() {
+								let path = item.path();
+								let version = path.file_name().unwrap().to_str().unwrap();
+
+								v.push(PackageTitle {
+									name: name.to_string(),
+									version: version.to_string(),
+								});
+							}
+						}
 					}
 				}
+				Ok(v)
+			}
+			Err(_) => {
+				tracing::error!(
+					"Package repository is missing installation path '{}': attempting to create",
+					installed_path.display()
+				);
+
+				match std::fs::create_dir_all(&installed_path) {
+					Ok(_) => {}
+					Err(e) => {
+						tracing::error!(
+							"Received error while trying to create package installation directory: {}",
+							e
+						);
+					}
+				}
+
+				Ok(Default::default())
 			}
 		}
-
-		Ok(v)
 	}
 
 	pub fn response_registry(&self) -> ResponseRegistry {
