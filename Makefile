@@ -1,7 +1,5 @@
-SUDO_ENV := sudo -E bash -c
-
 define sudo_cargo
-	$(SUDO_ENV) '. ~/.cargo/env && cargo $(@)'
+	sudo -E bash -c '. ~/.cargo/env && cargo $(@)'
 endef
 
 test: charon/testdata/ubuntu.img
