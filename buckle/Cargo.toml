@@ -24,7 +24,6 @@ systemd = "*"
 tempfile = "*"
 tonic-prost = "*"
 easy-upnp = "*"
-vayama = { version = "*", path = "../vayama" }
 
 [build-dependencies]
 tonic-prost-build = "*"
