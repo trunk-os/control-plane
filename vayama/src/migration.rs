@@ -1,13 +1,14 @@
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 use std::{
 	collections::{BTreeSet, HashMap},
 	path::{Path, PathBuf},
 	pin::Pin,
 	process::ExitStatus,
+	sync::Arc,
 };
-
-use anyhow::{Result, anyhow};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tokio::sync::Mutex;
 
 pub(crate) const MIGRATION_FILENAME_TEMP: &str = "vayama.state.tmp";
 pub(crate) const MIGRATION_FILENAME: &str = "vayama.state";
@@ -28,17 +29,11 @@ pub enum MigrationError {
 	CommandFailed(ExitStatus, Vec<String>, Option<String>),
 }
 
-#[macro_export]
-// NOTE: the block you provide here will be executed with async coloring.
-macro_rules! migration_func {
-	($func:block) => {{ Box::new(|| Box::pin(async { $func })) }};
-}
-
-pub type MigrationAsyncFunc =
-	Pin<Box<dyn Send + Future<Output = std::result::Result<(), MigrationError>>>>;
-
-pub type MigrationFunc = Box<dyn FnMut() -> MigrationAsyncFunc>;
-
+pub type TransientState = Arc<Mutex<HashMap<String, String>>>;
+pub type MigrationResult = Result<TransientState, MigrationError>;
+pub type MigrationFuture = dyn Send + Future<Output = MigrationResult>;
+pub type MigrationAsyncFn = Pin<Box<MigrationFuture>>;
+pub type MigrationFunc = Box<dyn FnMut(TransientState) -> MigrationAsyncFn>;
 pub type MigrationRuntimeState = HashMap<String, String>;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
@@ -112,7 +107,7 @@ impl Migrator {
 		)?)
 	}
 
-	pub async fn execute_failed(&mut self) -> Result<()> {
+	pub async fn execute_failed(&mut self, mut state: TransientState) -> Result<TransientState> {
 		let failed_migrations = self.state.failed_migrations.clone();
 		let migration_names: Vec<String> = self.migrations.iter().map(|x| x.name.clone()).collect();
 
@@ -120,11 +115,12 @@ impl Migrator {
 			if failed_migrations.contains(name) {
 				let deps = self.migration_dependencies(index);
 				match self.migrations[index]
-					.execute(&self.state, deps, &self.runtime_state)
+					.execute(&self.state, deps, state.clone())
 					.await
 				{
-					Ok(_) => {
+					Ok(s) => {
 						self.state.failed_migrations.remove(name);
+						state = s;
 					}
 					Err(e) => {
 						tracing::error!(
@@ -138,7 +134,7 @@ impl Migrator {
 		}
 
 		self.persist_state()?;
-		Ok(())
+		Ok(state)
 	}
 
 	pub fn migration_dependencies(&mut self, index: usize) -> Vec<String> {
@@ -171,7 +167,9 @@ impl Migrator {
 		deps.iter().map(Clone::clone).collect::<Vec<String>>()
 	}
 
-	pub async fn execute(&mut self) -> Result<Option<usize>> {
+	pub async fn execute(
+		&mut self, state: TransientState,
+	) -> Result<(TransientState, Option<usize>)> {
 		if !self.more_migrations() {
 			return Err(anyhow!(
 				"current state ({}) is greater than migrations length ({})",
@@ -186,14 +184,11 @@ impl Migrator {
 		let orig = self.state.current_state;
 		self.state.current_state += 1;
 
-		return match migration
-			.execute(&self.state, deps, &self.runtime_state)
-			.await
-		{
-			Ok(_) => {
+		return match migration.execute(&self.state, deps, state.clone()).await {
+			Ok(state) => {
 				self.persist_state()?;
 
-				Ok(Some(orig))
+				Ok((state, Some(orig)))
 			}
 			Err(e) => {
 				tracing::error!(
@@ -205,7 +200,7 @@ impl Migrator {
 				self.state.failed_migrations.insert(migration.name.clone());
 				self.persist_state()?;
 
-				Ok(None)
+				Ok((state, None))
 			}
 		};
 	}
@@ -232,7 +227,7 @@ impl Default for Migration {
 			dependencies: Default::default(),
 			check: Default::default(),
 			post_check: Default::default(),
-			run: migration_func!({ Ok(()) }),
+			run: migration_func!({ Ok(state) }, state),
 		}
 	}
 }
@@ -263,8 +258,8 @@ impl Migration {
 
 	pub async fn execute(
 		&mut self, state: &MigrationState, dependencies: Vec<String>,
-		_runtime_state: &MigrationRuntimeState,
-	) -> std::result::Result<(), MigrationError> {
+		mut transient_state: TransientState,
+	) -> std::result::Result<TransientState, MigrationError> {
 		for migration in &state.failed_migrations {
 			if self.dependencies.contains(migration) || dependencies.contains(migration) {
 				return Err(MigrationError::DependencyFailed(
@@ -275,23 +270,26 @@ impl Migration {
 		}
 
 		if let Some(check) = &mut self.check {
-			if let Err(e) = check().await {
-				return Err(e);
+			match check(transient_state).await {
+				Ok(s) => transient_state = s,
+				Err(e) => return Err(e),
 			}
 		}
 
-		let call = (self.run)();
+		let call = (self.run)(transient_state);
 
-		if let Err(e) = call.await {
-			return Err(e);
+		match call.await {
+			Ok(s) => transient_state = s,
+			Err(e) => return Err(e),
 		}
 
 		if let Some(post_check) = &mut self.post_check {
-			if let Err(e) = post_check().await {
-				return Err(e);
+			match post_check(transient_state).await {
+				Ok(s) => transient_state = s,
+				Err(e) => return Err(e),
 			}
 		}
 
-		Ok(())
+		Ok(transient_state)
 	}
 }

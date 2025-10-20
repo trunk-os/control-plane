@@ -9,6 +9,17 @@ use tokio::sync::Mutex;
 // negatives. This really, really needs to be gutted.
 static STATE: LazyLock<Arc<Mutex<BTreeSet<String>>>> = LazyLock::new(|| Default::default());
 
+mod migrations {
+	mod runners {
+		use crate::{MigrationFuture, TransientState};
+
+		async fn successful_run_func(state: TransientState) -> MigrationFuture {
+			Ok(state)
+		}
+	}
+	mod checks {}
+}
+
 async fn get_state(name: &str) -> bool {
 	STATE.lock().await.contains(name)
 }
