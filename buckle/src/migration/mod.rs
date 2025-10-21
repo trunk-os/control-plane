@@ -30,7 +30,7 @@ pub async fn run_migrations<'a>(
 	for migration in migrations {
 		let closure = migration.closure().await;
 		let lock = closure.lock().await;
-		let state = (*lock)(state.clone()).await?;
+		state = (*lock)(state.clone()).await?;
 	}
 
 	Ok(())
@@ -61,7 +61,7 @@ impl BoxedMigrationClosure for MigrationClosure {
 macro_rules! make_migration_func {
 	($name:ident, $state:ident, $func:block) => {
 		Arc::new(Mutex::new(Box::new(|mut state: MigrationState| {
-			let $state = state.clone();
+			let mut $state = state.clone();
 			Box::pin(async move { $func })
 		})))
 	};
@@ -114,5 +114,30 @@ mod tests {
 		.await;
 
 		assert!(res.is_err())
+	}
+
+	#[tokio::test]
+	async fn test_migration_state() {
+		let state: MigrationState = Default::default();
+		let res = run_migrations(
+			build_migration_set!(
+				state,
+				(foo, {
+					state.insert("hello".into(), "world".into());
+					Ok(state)
+				}),
+				(bar, {
+					if state.contains_key("hello") {
+						Ok(state)
+					} else {
+						Err(MigrationError::Unknown)
+					}
+				})
+			),
+			state,
+		)
+		.await;
+
+		assert!(res.is_ok());
 	}
 }
