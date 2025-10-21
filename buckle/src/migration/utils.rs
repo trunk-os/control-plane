@@ -4,8 +4,8 @@ use std::{collections::HashMap, io::Write, path::PathBuf};
 const PODMAN_COMMAND: &str = "podman";
 const ZFS_COMMAND: &str = "zfs";
 
-pub async fn generic_command(command: &str, args: Vec<&str>) -> Result<String> {
-	let output = tokio::process::Command::new(command)
+pub async fn command(cmd: &str, args: Vec<&str>) -> Result<String> {
+	let output = tokio::process::Command::new(cmd)
 		.args(&args)
 		.output()
 		.await?;
@@ -15,7 +15,7 @@ pub async fn generic_command(command: &str, args: Vec<&str>) -> Result<String> {
 	} else {
 		Err(anyhow!(
 			"command `{}` [args: {:?}] exited with status {:?}: stderr: [{}]",
-			command,
+			cmd,
 			args,
 			output.status.code(),
 			String::from_utf8_lossy(&output.stderr).to_string()
@@ -24,11 +24,11 @@ pub async fn generic_command(command: &str, args: Vec<&str>) -> Result<String> {
 }
 
 pub async fn podman(args: Vec<&str>) -> Result<String> {
-	generic_command(PODMAN_COMMAND, args).await
+	command(PODMAN_COMMAND, args).await
 }
 
 pub async fn zfs(args: Vec<&str>) -> Result<String> {
-	generic_command(ZFS_COMMAND, args).await
+	command(ZFS_COMMAND, args).await
 }
 
 #[macro_export]
