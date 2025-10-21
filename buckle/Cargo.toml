@@ -25,6 +25,7 @@ tempfile = "*"
 tonic-prost = "*"
 easy-upnp = "*"
 thiserror = "*" 
+async-trait = "*"
 
 [build-dependencies]
 tonic-prost-build = "*"

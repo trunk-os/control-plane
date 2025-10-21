@@ -446,6 +446,7 @@ name = "buckle"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap",
  "easy-upnp",
  "fancy-duration",
