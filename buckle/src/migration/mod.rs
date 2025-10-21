@@ -23,6 +23,12 @@ pub enum MigrationError {
 	UnknownWithMessage(String),
 }
 
+impl From<anyhow::Error> for MigrationError {
+	fn from(value: anyhow::Error) -> Self {
+		Self::UnknownWithMessage(value.to_string())
+	}
+}
+
 pub type Migration = Vec<Box<dyn BoxedMigrationClosure>>;
 
 pub async fn run_migrations<'a>(

@@ -3,15 +3,19 @@ use std::{collections::HashMap, io::Write, path::PathBuf};
 
 const PODMAN_COMMAND: &str = "podman";
 const ZFS_COMMAND: &str = "zfs";
+const SYSTEMCTL_COMMAND: &str = "systemctl";
 
-pub async fn command(cmd: &str, args: Vec<&str>) -> Result<String> {
+pub async fn command(cmd: &str, args: Vec<&str>) -> Result<(String, String)> {
 	let output = tokio::process::Command::new(cmd)
 		.args(&args)
 		.output()
 		.await?;
 
 	if output.status.success() {
-		Ok(String::from_utf8(output.stdout)?)
+		Ok((
+			String::from_utf8(output.stdout)?,
+			String::from_utf8(output.stderr)?,
+		))
 	} else {
 		Err(anyhow!(
 			"command `{}` [args: {:?}] exited with status {:?}: stderr: [{}]",
@@ -23,12 +27,16 @@ pub async fn command(cmd: &str, args: Vec<&str>) -> Result<String> {
 	}
 }
 
-pub async fn podman(args: Vec<&str>) -> Result<String> {
+pub async fn podman(args: Vec<&str>) -> Result<(String, String)> {
 	command(PODMAN_COMMAND, args).await
 }
 
-pub async fn zfs(args: Vec<&str>) -> Result<String> {
+pub async fn zfs(args: Vec<&str>) -> Result<(String, String)> {
 	command(ZFS_COMMAND, args).await
+}
+
+pub async fn systemctl(args: Vec<&str>) -> Result<(String, String)> {
+	command(SYSTEMCTL_COMMAND, args).await
 }
 
 #[macro_export]
