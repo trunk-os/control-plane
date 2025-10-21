@@ -4,6 +4,7 @@ use thiserror::Error;
 use tokio::sync::Mutex;
 
 mod plans;
+mod utils;
 
 pub type MigrationState = HashMap<String, String>;
 pub type MigrationResult = Result<MigrationState, MigrationError>;
