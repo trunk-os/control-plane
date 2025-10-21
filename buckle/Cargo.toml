@@ -24,6 +24,7 @@ systemd = "*"
 tempfile = "*"
 tonic-prost = "*"
 easy-upnp = "*"
+thiserror = "*" 
 
 [build-dependencies]
 tonic-prost-build = "*"

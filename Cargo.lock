@@ -457,6 +457,7 @@ dependencies = [
  "sysinfo",
  "systemd",
  "tempfile",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "tonic",
