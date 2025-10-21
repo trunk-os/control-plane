@@ -22,23 +22,15 @@ pub enum MigrationError {
 	UnknownWithMessage(String),
 }
 
-pub struct Migration<'a>(Vec<&'a dyn BoxedMigrationClosure>);
+pub type Migration = Vec<Box<dyn BoxedMigrationClosure>>;
 
-impl<'a> Migration<'a> {
-	pub async fn run(&self, mut state: MigrationState) -> Result<(), MigrationError> {
-		for func in &self.0 {
-			let closure = func.closure().await;
-			let lock = closure.lock().await;
-			state = (*lock)(state).await?;
-		}
-
-		Ok(())
-	}
-}
-
-pub async fn run_migrations(migrations: Vec<Migration<'_>>) -> anyhow::Result<()> {
-	for migration in &migrations {
-		migration.run(Default::default()).await?;
+pub async fn run_migrations<'a>(
+	migrations: Migration, mut state: MigrationState,
+) -> anyhow::Result<()> {
+	for migration in migrations {
+		let closure = migration.closure().await;
+		let lock = closure.lock().await;
+		let state = (*lock)(state.clone()).await?;
 	}
 
 	Ok(())
@@ -65,35 +57,62 @@ impl BoxedMigrationClosure for MigrationClosure {
 	}
 }
 
+#[macro_export]
 macro_rules! make_migration_func {
 	($name:ident, $state:ident, $func:block) => {
-		MigrationClosure(Arc::new(Mutex::new(Box::new(
-			|mut state: MigrationState| {
-				let $state = state.clone();
-				Box::pin(async move { $func })
-			},
-		))))
+		Arc::new(Mutex::new(Box::new(|mut state: MigrationState| {
+			let $state = state.clone();
+			Box::pin(async move { $func })
+		})))
 	};
 }
 
+#[macro_export]
 macro_rules! build_migration_set {
     ($state:ident, $(($name:ident, $func:block)),*) => {{
-      let mut v = Vec::new();
+      let mut v: Migration = Vec::new();
       $(
       {
-        let func = make_migration_func!($name, $state, $func);
-        v.push(func);
+        v.push(Box::new(MigrationClosure(make_migration_func!($name, $state, $func))));
       }
       )*
       v
     }}
   }
 
+#[cfg(test)]
 mod tests {
 	use super::*;
 
-	async fn migration_success() {
+	#[tokio::test]
+	async fn test_build_migration_set() {
 		let state: MigrationState = Default::default();
-		build_migration_set!(state, (foo, { Ok(state) }), (bar, { Ok(state) }));
+		let v = build_migration_set!(state, (foo, { Ok(state) }), (bar, { Ok(state) }));
+		assert_eq!(v.len(), 2);
+	}
+
+	#[tokio::test]
+	async fn test_run_migration() {
+		let state: MigrationState = Default::default();
+		let res = run_migrations(
+			build_migration_set!(state, (foo, { Ok(state) }), (bar, { Ok(state) })),
+			state,
+		)
+		.await;
+
+		assert!(res.is_ok());
+
+		let state: MigrationState = Default::default();
+		let res = run_migrations(
+			build_migration_set!(
+				state,
+				(foo, { Err(MigrationError::Unknown) }),
+				(bar, { Ok(state) })
+			),
+			state,
+		)
+		.await;
+
+		assert!(res.is_err())
 	}
 }
