@@ -1,8 +1,5 @@
-use super::utils::*;
 use super::*;
-use crate::systemd_unit;
 use crate::{build_migration_set, make_migration_func};
-use std::time::Duration;
 
 #[macro_export]
 #[rustfmt::skip]
@@ -55,40 +52,12 @@ fn prometheus() -> Migration {
 	)
 }
 
-#[rustfmt::skip]
 fn grafana() -> Migration {
-	let state = MigrationState::default();
-	build_migration_set!(state, {
-		match zfs(vec!["list", "trunk/grafana"]).await {
-			Ok(_) => {}
-			Err(_) => {
-				zfs(vec!["create", "trunk/grafana", "-o", "quota=50G"]).await?;
-			}
-		}
-
-		let unit = systemd_unit!(
-		  "trunk-grafana",
-		  ("Unit", (("Description" => "Trunk: Grafana Dashboard Service"),)),
-		  ("Service", (
-        ("ExecStart" => "podman run -it -u 0 --net host -d --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"),
-        ("ExecStop" => "podman stop trunk-grafana"),
-        ("Restart" => "always"),
-        ("TimeoutSec" => "300"),
-		  )),
-		  ("Install", (
-        ("Alias" => "trunk-grafana.service"),
-        ("WantedBy" => "network-online.target"),
-		  )),
-		);
-
-		unit.write(None)?;
-
-		systemctl(vec!["daemon-reload"]).await?;
-		tokio::time::sleep(Duration::from_millis(200)).await;
-		systemctl(vec!["restart", "trunk-grafana.service"]).await?;
-
-		Ok(state)
-	})
+	build_container_migration!(
+		grafana,
+		"Grafana Dashboard Service",
+		"podman run -it -u 0 --net host -d --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"
+	)
 }
 
 fn node_exporter() -> Migration {
