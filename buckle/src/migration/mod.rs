@@ -7,7 +7,7 @@ use std::{
 use thiserror::Error;
 use tokio::sync::Mutex;
 
-mod plans;
+pub mod plans;
 mod utils;
 
 pub type MigrationState = HashMap<String, String>;
@@ -35,18 +35,6 @@ impl From<anyhow::Error> for MigrationError {
 
 pub type Migration = Vec<Box<dyn BoxedMigrationClosure>>;
 
-pub async fn run_migration(
-	migrations: Migration, mut state: MigrationState,
-) -> Result<MigrationState, MigrationError> {
-	for migration in migrations {
-		let closure = migration.closure().await;
-		let lock = closure.lock().await;
-		state = (*lock)(state.clone()).await?;
-	}
-
-	Ok(state)
-}
-
 pub async fn run_migrations<'a>(
 	map: HashMap<&'static str, Migration>, mut state: MigrationState,
 ) -> anyhow::Result<()> {
@@ -68,8 +56,11 @@ pub async fn run_migrations<'a>(
 	};
 
 	for (name, migration) in map {
-		state = run_migration(migration, state.clone()).await?;
+		if completed.contains(name) {
+			continue;
+		}
 
+		state = run_migration(migration, state.clone()).await?;
 		completed.insert(name.to_string());
 
 		let mut f = std::fs::OpenOptions::new()
@@ -88,6 +79,18 @@ pub async fn run_migrations<'a>(
 	}
 
 	Ok(())
+}
+
+async fn run_migration(
+	migrations: Migration, mut state: MigrationState,
+) -> Result<MigrationState, MigrationError> {
+	for migration in migrations {
+		let closure = migration.closure().await;
+		let lock = closure.lock().await;
+		state = (*lock)(state.clone()).await?;
+	}
+
+	Ok(state)
 }
 
 #[async_trait::async_trait]

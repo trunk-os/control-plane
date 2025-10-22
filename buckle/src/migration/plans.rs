@@ -14,31 +14,33 @@ pub fn migrations() -> HashMap<&'static str, Migration> {
 #[macro_export]
 #[rustfmt::skip]
 macro_rules! build_container_migration {
-	($name:ident, $description:expr, $command:expr) => {{
+	($name:expr, $description:expr, $command:expr) => {{
 		use super::utils::*;
 		use crate::systemd_unit;
 		use std::time::Duration;
 
 		let state = MigrationState::default();
 		build_migration_set!(state, {
-			match zfs(vec!["list", "trunk/$name"]).await {
+      let volname = format!("trunk/{}", $name);
+
+			match zfs(vec!["list", &volname]).await {
 				Ok(_) => {}
 				Err(_) => {
-					zfs(vec!["create", "trunk/$name", "-o", "quota=50G"]).await?;
+					zfs(vec!["create", &volname, "-o", "quota=50G"]).await?;
 				}
 			}
 
       let unit = systemd_unit!(
-        "trunk-$name",
-        ("Unit", (("Description" => "Trunk: $description"),)),
+        &format!("trunk-{}", $name),
+        ("Unit", (("Description" => &format!("Trunk: {}", $description)),)),
         ("Service", (
           ("ExecStart" => $command),
-          ("ExecStop" => "podman stop trunk-$name"),
+          ("ExecStop" => &format!("podman rm -f trunk-{}", $name)),
           ("Restart" => "always"),
           ("TimeoutSec" => "300"),
         )),
         ("Install", (
-          ("Alias" => "trunk-$name.service"),
+          ("Alias" => &format!("trunk-{}.service", $name)),
           ("WantedBy" => "network-online.target"),
         )),
       );
@@ -47,7 +49,9 @@ macro_rules! build_container_migration {
 
 			systemctl(vec!["daemon-reload"]).await?;
 			tokio::time::sleep(Duration::from_millis(200)).await;
-			systemctl(vec!["restart", "trunk-$name.service"]).await?;
+			systemctl(vec!["stop", &format!("trunk-{}.service", $name)]).await?;
+			systemctl(vec!["start", &format!("trunk-{}.service", $name)]).await?;
+			systemctl(vec!["enable", &format!("trunk-{}.service", $name)]).await?;
 
 			Ok(state)
 		})
@@ -56,24 +60,24 @@ macro_rules! build_container_migration {
 
 fn prometheus() -> Migration {
 	build_container_migration!(
-		prometheus,
+		"prometheus",
 		"Prometheus Query Service",
-		"podman run -u 0 --net host -d -v /trunk/prometheus:/prometheus:shared --name trunk-prometheus quay.io/trunk-os/prometheus"
+		"podman run -u 0 --net host -it -v /trunk/prometheus:/prometheus:shared --name trunk-prometheus quay.io/trunk-os/prometheus"
 	)
 }
 
 fn grafana() -> Migration {
 	build_container_migration!(
-		grafana,
+		"grafana",
 		"Grafana Dashboard Service",
-		"podman run -it -u 0 --net host -d --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"
+		"podman run -it -u 0 --net host -it --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"
 	)
 }
 
 fn node_exporter() -> Migration {
 	build_container_migration!(
-		node_exporter,
+		"node-exporter",
 		"node-exporter Metrics Service",
-		"podman run -it -d --cap-add SYS_TIME --name trunk-node-exporter --net host --pid host -v /:/host:ro,rslave quay.io/trunk-os/node-exporter --path.rootfs=/host"
+		"podman run -it --cap-add SYS_TIME --name trunk-node-exporter --net host --pid host -v /:/host:ro,rslave quay.io/trunk-os/node-exporter --path.rootfs=/host"
 	)
 }
