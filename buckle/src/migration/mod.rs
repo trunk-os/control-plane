@@ -1,6 +1,7 @@
 #![allow(dead_code, unused_variables, unused_mut)]
 use std::{
 	collections::{HashMap, HashSet},
+	path::PathBuf,
 	pin::Pin,
 	sync::Arc,
 };
@@ -25,6 +26,10 @@ pub enum MigrationError {
 	Unknown,
 	#[error("Unknown Error: {0}")]
 	UnknownWithMessage(String),
+	#[error("Error: [exit: {2}] [command: {0}]: {1}")]
+	Command(String, String, i32),
+	#[error("Error: [filename: {0}]: {1}")]
+	WriteFile(PathBuf, String),
 }
 
 impl From<anyhow::Error> for MigrationError {

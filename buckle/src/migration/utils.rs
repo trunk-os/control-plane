@@ -1,41 +1,42 @@
 use anyhow::{Result, anyhow};
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
+use crate::migration::MigrationError;
+
 const PODMAN_COMMAND: &str = "podman";
 const ZFS_COMMAND: &str = "zfs";
 const SYSTEMCTL_COMMAND: &str = "systemctl";
 
-pub async fn command(cmd: &str, args: Vec<&str>) -> Result<(String, String)> {
+pub async fn command(cmd: &str, args: Vec<&str>) -> Result<(String, String), MigrationError> {
 	let output = tokio::process::Command::new(cmd)
 		.args(&args)
 		.output()
-		.await?;
+		.await
+		.map_err(|e| anyhow!(e.to_string()))?;
 
 	if output.status.success() {
 		Ok((
-			String::from_utf8(output.stdout)?,
-			String::from_utf8(output.stderr)?,
+			String::from_utf8(output.stdout).map_err(|e| anyhow!(e.to_string()))?,
+			String::from_utf8(output.stderr).map_err(|e| anyhow!(e.to_string()))?,
 		))
 	} else {
-		Err(anyhow!(
-			"command `{}` [args: {:?}] exited with status {:?}: stderr: [{}]",
-			cmd,
-			args,
-			output.status.code(),
-			String::from_utf8_lossy(&output.stderr).to_string()
+		Err(MigrationError::Command(
+			format!("{} {}", cmd, args.join(" ")),
+			String::from_utf8_lossy(&output.stderr).to_string(),
+			output.status.code().unwrap_or_default(),
 		))
 	}
 }
 
-pub async fn podman(args: Vec<&str>) -> Result<(String, String)> {
+pub async fn podman(args: Vec<&str>) -> Result<(String, String), MigrationError> {
 	command(PODMAN_COMMAND, args).await
 }
 
-pub async fn zfs(args: Vec<&str>) -> Result<(String, String)> {
+pub async fn zfs(args: Vec<&str>) -> Result<(String, String), MigrationError> {
 	command(ZFS_COMMAND, args).await
 }
 
-pub async fn systemctl(args: Vec<&str>) -> Result<(String, String)> {
+pub async fn systemctl(args: Vec<&str>) -> Result<(String, String), MigrationError> {
 	command(SYSTEMCTL_COMMAND, args).await
 }
 
@@ -97,18 +98,20 @@ impl SystemdServiceUnit {
 		Ok(out)
 	}
 
-	pub fn write(&self, root: Option<PathBuf>) -> Result<()> {
+	pub fn write(&self, root: Option<PathBuf>) -> Result<(), MigrationError> {
 		let out = self.generate()?;
+		let filename = root
+			.unwrap_or(PathBuf::from("/etc/systemd/system"))
+			.join(&format!("{}.service", self.name));
 		let mut f = std::fs::OpenOptions::new()
 			.create(true)
 			.write(true)
 			.truncate(true)
-			.open(
-				root.unwrap_or(PathBuf::from("/etc/systemd/system"))
-					.join(&format!("{}.service", self.name)),
-			)?;
+			.open(filename.clone())
+			.map_err(|e| MigrationError::WriteFile(filename.clone(), e.to_string()))?;
 
-		Ok(f.write_all(out.as_bytes())?)
+		Ok(f.write_all(out.as_bytes())
+			.map_err(|e| MigrationError::WriteFile(filename, e.to_string()))?)
 	}
 }
 
