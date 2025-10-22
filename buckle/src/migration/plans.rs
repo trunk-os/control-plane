@@ -1,5 +1,15 @@
 use super::*;
 use crate::{build_migration_set, make_migration_func};
+use std::collections::HashMap;
+
+// NOTE: if they're not in this list, they basically don't exist
+pub fn migrations() -> HashMap<&'static str, Migration> {
+	HashMap::from([
+		("node-exporter", node_exporter()),
+		("prometheus", prometheus()),
+		("grafana", grafana()),
+	])
+}
 
 #[macro_export]
 #[rustfmt::skip]
@@ -20,7 +30,7 @@ macro_rules! build_container_migration {
 
       let unit = systemd_unit!(
         "trunk-$name",
-        ("Unit", (("Description" => &format!("Trunk: {}", $description)),)),
+        ("Unit", (("Description" => "Trunk: $description"),)),
         ("Service", (
           ("ExecStart" => $command),
           ("ExecStop" => "podman stop trunk-$name"),

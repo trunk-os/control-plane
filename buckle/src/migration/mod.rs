@@ -1,5 +1,9 @@
 #![allow(dead_code, unused_variables, unused_mut)]
-use std::{collections::HashMap, pin::Pin, sync::Arc};
+use std::{
+	collections::{HashMap, HashSet},
+	pin::Pin,
+	sync::Arc,
+};
 use thiserror::Error;
 use tokio::sync::Mutex;
 
@@ -31,13 +35,56 @@ impl From<anyhow::Error> for MigrationError {
 
 pub type Migration = Vec<Box<dyn BoxedMigrationClosure>>;
 
-pub async fn run_migrations<'a>(
+pub async fn run_migration(
 	migrations: Migration, mut state: MigrationState,
-) -> anyhow::Result<()> {
+) -> Result<MigrationState, MigrationError> {
 	for migration in migrations {
 		let closure = migration.closure().await;
 		let lock = closure.lock().await;
 		state = (*lock)(state.clone()).await?;
+	}
+
+	Ok(state)
+}
+
+pub async fn run_migrations<'a>(
+	map: HashMap<&'static str, Migration>, mut state: MigrationState,
+) -> anyhow::Result<()> {
+	let mut completed: HashSet<String> = match std::fs::OpenOptions::new()
+		.read(true)
+		.open("/trunk/.buckle-migrations.json")
+	{
+		Ok(mut f) => {
+			let v: Vec<String> = serde_json::from_reader(&mut f)?;
+			let mut map = HashSet::new();
+
+			for s in v {
+				map.insert(s);
+			}
+
+			map
+		}
+		Err(_) => HashSet::new(),
+	};
+
+	for (name, migration) in map {
+		state = run_migration(migration, state.clone()).await?;
+
+		completed.insert(name.to_string());
+
+		let mut f = std::fs::OpenOptions::new()
+			.write(true)
+			.create(true)
+			.truncate(true)
+			.open("/trunk/.buckle-migrations.json.tmp")?;
+
+		serde_json::to_writer(&mut f, &completed)?;
+		drop(f);
+
+		std::fs::rename(
+			"/trunk/.buckle-migrations.json.tmp",
+			"/trunk/.buckle-migrations.json",
+		)?;
 	}
 
 	Ok(())
@@ -101,7 +148,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_run_migration() {
 		let state: MigrationState = Default::default();
-		let res = run_migrations(
+		let res = run_migration(
 			build_migration_set!(state, { Ok(state) }, { Ok(state) }),
 			state,
 		)
@@ -110,7 +157,7 @@ mod tests {
 		assert!(res.is_ok());
 
 		let state: MigrationState = Default::default();
-		let res = run_migrations(
+		let res = run_migration(
 			build_migration_set!(state, { Err(MigrationError::Unknown) }, { Ok(state) }),
 			state,
 		)
@@ -122,7 +169,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_migration_state() {
 		let state: MigrationState = Default::default();
-		let res = run_migrations(
+		let res = run_migration(
 			build_migration_set!(
 				state,
 				{
