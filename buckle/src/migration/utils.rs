@@ -41,7 +41,7 @@ pub async fn systemctl(args: Vec<&str>) -> Result<(String, String)> {
 
 #[macro_export]
 macro_rules! systemd_unit {
-	($name:expr, $(($section_name:expr, ($(($key:expr, $value:expr),)*)),)*) => {
+	($name:expr, $(($section_name:expr, ($(($key:expr => $value:expr),)*)),)*) => {
     {
         let mut unit = SystemdServiceUnit {
             name: $name.into(),
@@ -59,8 +59,8 @@ macro_rules! systemd_unit {
 
 #[derive(Debug, Clone, Default)]
 pub struct SystemdServiceUnit {
-	name: String,
-	sections: HashMap<String, HashMap<String, String>>,
+	pub name: String,
+	pub sections: HashMap<String, HashMap<String, String>>,
 }
 
 impl SystemdServiceUnit {
@@ -123,23 +123,23 @@ mod tests {
 			(
 				"Unit",
 				(
-					("Name", "test-unit.service"),
-					("Description", "a test service"),
+					("Name" => "test-unit.service"),
+					("Description" => "a test service"),
 				)
 			),
 			(
 				"Install",
 				(
-					("Alias", "also-a-test-unit.service"),
-					("WantedBy", "default.target"),
+					("Alias" => "also-a-test-unit.service"),
+					("WantedBy" => "default.target"),
 				)
 			),
 			(
 				"Service",
 				(
-					("Exec", "/usr/games/fortune"),
-					("KillMode", "pid"),
-					("Restart", "always"),
+					("Exec" => "/usr/games/fortune"),
+					("KillMode" => "pid"),
+					("Restart" => "always"),
 				)
 			),
 		);

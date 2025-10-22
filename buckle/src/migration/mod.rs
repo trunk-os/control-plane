@@ -66,7 +66,7 @@ impl BoxedMigrationClosure for MigrationClosure {
 
 #[macro_export]
 macro_rules! make_migration_func {
-	($name:ident, $state:ident, $func:block) => {
+	($state:ident, $func:block) => {
 		Arc::new(Mutex::new(Box::new(|mut state: MigrationState| {
 			let mut $state = state.clone();
 			Box::pin(async move { $func })
@@ -76,11 +76,11 @@ macro_rules! make_migration_func {
 
 #[macro_export]
 macro_rules! build_migration_set {
-    ($state:ident, $(($name:ident, $func:block)),*) => {{
+    ($state:ident, $($func:block),*) => {{
       let mut v: Migration = Vec::new();
       $(
       {
-        v.push(Box::new(MigrationClosure(make_migration_func!($name, $state, $func))));
+        v.push(Box::new(MigrationClosure(make_migration_func!($state, $func))));
       }
       )*
       v
@@ -94,7 +94,7 @@ mod tests {
 	#[tokio::test]
 	async fn test_build_migration_set() {
 		let state: MigrationState = Default::default();
-		let v = build_migration_set!(state, (foo, { Ok(state) }), (bar, { Ok(state) }));
+		let v = build_migration_set!(state, { Ok(state) }, { Ok(state) });
 		assert_eq!(v.len(), 2);
 	}
 
@@ -102,7 +102,7 @@ mod tests {
 	async fn test_run_migration() {
 		let state: MigrationState = Default::default();
 		let res = run_migrations(
-			build_migration_set!(state, (foo, { Ok(state) }), (bar, { Ok(state) })),
+			build_migration_set!(state, { Ok(state) }, { Ok(state) }),
 			state,
 		)
 		.await;
@@ -111,11 +111,7 @@ mod tests {
 
 		let state: MigrationState = Default::default();
 		let res = run_migrations(
-			build_migration_set!(
-				state,
-				(foo, { Err(MigrationError::Unknown) }),
-				(bar, { Ok(state) })
-			),
+			build_migration_set!(state, { Err(MigrationError::Unknown) }, { Ok(state) }),
 			state,
 		)
 		.await;
@@ -129,17 +125,17 @@ mod tests {
 		let res = run_migrations(
 			build_migration_set!(
 				state,
-				(foo, {
+				{
 					state.insert("hello".into(), "world".into());
 					Ok(state)
-				}),
-				(bar, {
+				},
+				{
 					if state.contains_key("hello") {
 						Ok(state)
 					} else {
 						Err(MigrationError::Unknown)
 					}
-				})
+				}
 			),
 			state,
 		)
