@@ -479,27 +479,41 @@ pub(crate) async fn set_unit(
 }
 
 pub(crate) async fn unit_log(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(params): Cbor<LogParameters>,
-) -> Result<CborOut<Vec<buckle::systemd::LogMessage>>> {
-	let mut log = state
-		.buckle
-		.systemd()
-		.await
-		.unwrap()
-		.unit_log(&params.name, params.count, params.cursor, params.direction)
-		.await
-		.unwrap();
+) -> Result<WithLog<CborOut<Vec<buckle::systemd::LogMessage>>>> {
+	run_with_log!(
+		state,
+		log,
+		(user, params),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let params = params.lock().await.clone();
+			let user = user.lock().await.clone();
 
-	// NOTE: this value can get very large and potentially cause a lot of memory usage if the count
-	// is too high.
-	let mut v = Vec::with_capacity(params.count);
+			log.from_user(&user)
+				.with_entry("Retrieve systemd unit log")
+				.with_data(&params)?;
 
-	while let Some(Ok(entry)) = log.next().await {
-		v.push(entry.into())
-	}
+			let mut unit_log = state
+				.buckle
+				.systemd()
+				.await
+				.unwrap()
+				.unit_log(&params.name, params.count, params.cursor, params.direction)
+				.await
+				.unwrap();
 
-	Ok(CborOut(v))
+			// NOTE: this value can get very large and potentially cause a lot of memory usage if the count
+			// is too high.
+			let mut v = Vec::with_capacity(params.count);
+
+			while let Some(Ok(entry)) = unit_log.next().await {
+				v.push(entry.into())
+			}
+
+			Ok(CborOut(v))
+		}
+	)
 }
 
 //
@@ -533,6 +547,7 @@ pub(crate) async fn set_responses(
 			log.from_user(&user)
 				.with_entry("Set package responses")
 				.with_data(&responses)?;
+
 			state
 				.charon
 				.query()
@@ -545,17 +560,31 @@ pub(crate) async fn set_responses(
 }
 
 pub(crate) async fn get_responses(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(title): Cbor<charon::PackageTitle>,
-) -> Result<CborOut<charon::PromptResponses>> {
-	Ok(CborOut(
-		state
-			.charon
-			.query()
-			.await?
-			.get_responses(&title.name)
-			.await?,
-	))
+) -> Result<WithLog<CborOut<charon::PromptResponses>>> {
+	run_with_log!(
+		state,
+		log,
+		(user, title),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let user = user.lock().await.clone();
+			let title = title.lock().await.clone();
+
+			log.from_user(&user)
+				.with_entry("Get package responses")
+				.with_data(&title)?;
+
+			Ok(CborOut(
+				state
+					.charon
+					.query()
+					.await?
+					.get_responses(&title.name)
+					.await?,
+			))
+		}
+	)
 }
 
 pub(crate) async fn list_installed(
