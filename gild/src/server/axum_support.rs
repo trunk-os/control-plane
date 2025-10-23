@@ -19,24 +19,42 @@ pub(crate) type Result<T> = core::result::Result<T, AppError>;
 fn inner_validation_error(value: &Vec<ValidationError>) -> String {
 	let mut msg = Vec::new();
 	for item in value {
-		let mut inner_msg = Vec::new();
+		msg.push(match item.code.to_string().as_str() {
+			"length" => {
+				let mut max = "none".to_string();
+				let mut min = "0".to_string();
 
-		for (field_k, field_v) in &item.params {
-			if field_k != "value" {
-				inner_msg.push(format!("{}: {}", field_k, field_v.to_string()));
+				for (field_k, field_v) in &item.params {
+					if field_k == "max" {
+						max = field_v.to_string()
+					}
+					if field_k == "min" {
+						min = field_v.to_string()
+					}
+				}
+
+				format!(
+					"length is invalid: it must be between {} and {} characters",
+					min, max
+				)
 			}
-		}
+			"email" => "email address does not look valid".to_string(),
+			_ => {
+				let mut inner_msg = Vec::new();
 
-		msg.push(format!(
-			"type: {}, constraints: [{}]",
-			// NOTE: hack to correct output for password field; see db::User for more info
-			if item.code == "plaintext_password" {
-				"password".to_string()
-			} else {
-				item.code.to_string()
-			},
-			inner_msg.join(", ")
-		))
+				for (field_k, field_v) in &item.params {
+					if field_k != "value" {
+						inner_msg.push(format!("{}: {}", field_k, field_v.to_string()));
+					}
+				}
+
+				format!(
+					"type: {}, constraints: [{}]",
+					item.code.to_string(),
+					inner_msg.join(", ")
+				)
+			}
+		})
 	}
 
 	msg.join(", ")
@@ -68,7 +86,15 @@ fn human_validation_error(value: &HashMap<Cow<'static, str>, ValidationErrorsKin
 				inner_msg.push(field_validation_error(s.field_errors()));
 			}
 		}
-		msg.push(format!("{}: [{}]", k, inner_msg.join(", ")));
+		msg.push(format!(
+			"{}: [{}]",
+			if k == "plaintext_password" {
+				"password"
+			} else {
+				k
+			},
+			inner_msg.join(", ")
+		));
 	}
 
 	msg.join(", ")
