@@ -1,6 +1,6 @@
 use super::*;
 use crate::{build_migration_set, make_migration_func};
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 // NOTE: if they're not in this list, they basically don't exist
 pub fn migrations() -> HashMap<&'static str, Migration> {
@@ -11,13 +11,22 @@ pub fn migrations() -> HashMap<&'static str, Migration> {
 	])
 }
 
+pub async fn boot_service(name: &str) -> anyhow::Result<()> {
+	let client = crate::systemd::Systemd::new_system().await?;
+	client.reload().await?;
+	tokio::time::sleep(Duration::from_millis(200)).await;
+	client.stop(name.to_string()).await?;
+	client.start(name.to_string()).await?;
+	client.enable(name.to_string()).await?;
+	Ok(())
+}
+
 #[macro_export]
 #[rustfmt::skip]
 macro_rules! build_container_migration {
 	($name:expr, $description:expr, $command:expr) => {{
 		use super::utils::*;
 		use crate::systemd_unit;
-		use std::time::Duration;
 
 		let state = MigrationState::default();
 		build_migration_set!(state, {
@@ -46,12 +55,7 @@ macro_rules! build_container_migration {
       );
 
 			unit.write(None)?;
-
-			systemctl(vec!["daemon-reload"]).await?;
-			tokio::time::sleep(Duration::from_millis(200)).await;
-			systemctl(vec!["stop", &format!("trunk-{}.service", $name)]).await?;
-			systemctl(vec!["start", &format!("trunk-{}.service", $name)]).await?;
-			systemctl(vec!["enable", &format!("trunk-{}.service", $name)]).await?;
+      boot_service(&format!("trunk-{}.service", $name)).await?;
 
 			Ok(state)
 		})

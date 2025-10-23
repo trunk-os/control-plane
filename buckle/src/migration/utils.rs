@@ -38,10 +38,6 @@ pub async fn zfs(args: Vec<&str>) -> Result<(String, String), MigrationError> {
 	command(ZFS_COMMAND, args).await
 }
 
-pub async fn systemctl(args: Vec<&str>) -> Result<(String, String), MigrationError> {
-	command(SYSTEMCTL_COMMAND, args).await
-}
-
 #[macro_export]
 macro_rules! systemd_unit {
 	($name:expr, $(($section_name:expr, ($(($key:expr => $value:expr),)*)),)*) => {

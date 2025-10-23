@@ -417,6 +417,14 @@ impl Systemd {
 		Ok(())
 	}
 
+	pub async fn enable(&self, name: String) -> Result<()> {
+		self.manager
+			.enable_unit_files(vec![name], true, true)
+			.await?;
+
+		Ok(())
+	}
+
 	pub async fn load_unit(&self, name: String) -> Result<()> {
 		self.manager.load_unit(name).await?;
 		Ok(())
