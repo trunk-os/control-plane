@@ -10,46 +10,104 @@ use axum_serde::Cbor;
 use hmac::{Hmac, Mac};
 use jwt::{Header, Token, Verified, VerifyWithKey};
 use problem_details::ProblemDetails;
-use std::{
-	any::{Any, TypeId},
-	sync::Arc,
-};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use tracing::error;
+use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
 pub(crate) type Result<T> = core::result::Result<T, AppError>;
+
+fn inner_validation_error(value: &Vec<ValidationError>) -> String {
+	let mut msg = Vec::new();
+	for item in value {
+		let mut inner_msg = Vec::new();
+
+		for (field_k, field_v) in &item.params {
+			if field_k != "value" {
+				inner_msg.push(format!("{}: {}", field_k, field_v.to_string()));
+			}
+		}
+
+		msg.push(format!(
+			"type: {}, constraints: [{}]",
+			item.code,
+			inner_msg.join(", ")
+		))
+	}
+
+	msg.join(", ")
+}
+
+fn field_validation_error(value: HashMap<Cow<'static, str>, &Vec<ValidationError>>) -> String {
+	let mut msg = Vec::new();
+
+	for (k, v) in value {
+		msg.push(format!("{}: [{}]", k, inner_validation_error(v)))
+	}
+
+	msg.join(" ")
+}
+
+fn human_validation_error(value: &HashMap<Cow<'static, str>, ValidationErrorsKind>) -> String {
+	let mut msg = Vec::new();
+	for (k, v) in value {
+		let mut inner_msg = Vec::new();
+
+		match v {
+			ValidationErrorsKind::List(list) => {
+				for (_, error) in list {
+					inner_msg.push(field_validation_error(error.field_errors()))
+				}
+			}
+			ValidationErrorsKind::Field(field) => inner_msg.push(inner_validation_error(field)),
+			ValidationErrorsKind::Struct(s) => {
+				inner_msg.push(field_validation_error(s.field_errors()));
+			}
+		}
+		msg.push(format!("{}: [{}]", k, inner_msg.join(", ")));
+	}
+
+	msg.join(", ")
+}
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AppError(pub ProblemDetails);
 
 impl<E> From<E> for AppError
 where
-	E: Into<anyhow::Error> + Any,
+	E: Into<anyhow::Error> + std::fmt::Debug + std::fmt::Display + Send + Sync + 'static,
 {
 	fn from(value: E) -> Self {
-		// hack around type specialization
-		if TypeId::of::<E>() == TypeId::of::<ProblemDetails>() {
-			Self(
-				<dyn Any + 'static>::downcast_ref::<ProblemDetails>(&value)
-					.unwrap()
-					.clone(),
-			)
-		} else if TypeId::of::<E>() == TypeId::of::<tonic::Status>() {
-			Self(
+		let value: anyhow::Error = value.into();
+
+		if value.is::<tonic::Status>() {
+			let value = value.downcast_ref::<tonic::Status>().unwrap();
+			return Self(
 				ProblemDetails::new()
-					.with_detail(
-						<dyn Any + 'static>::downcast_ref::<tonic::Status>(&value)
-							.unwrap()
-							.message(),
-					)
-					.with_title("Uncategorized Error"),
-			)
-		} else {
-			Self(
-				ProblemDetails::new()
-					.with_detail(value.into().to_string())
-					.with_title("Uncategorized Error"),
-			)
+					.with_detail(value.message())
+					.with_title("API sub-services error"),
+			);
 		}
+
+		if value.is::<ValidationErrors>() {
+			let value = value.downcast_ref::<ValidationErrors>().unwrap();
+
+			return Self(
+				ProblemDetails::new()
+					.with_detail(human_validation_error(value.errors()))
+					.with_title("Validation Error"),
+			);
+		}
+
+		if value.is::<ProblemDetails>() {
+			let value = value.downcast::<ProblemDetails>().unwrap();
+			return Self(value);
+		}
+
+		Self(
+			ProblemDetails::new()
+				.with_detail(value.to_string())
+				.with_title("Uncategorized Error"),
+		)
 	}
 }
 
@@ -71,7 +129,7 @@ where
 		let mut buf = std::io::Cursor::new(&mut inner);
 
 		if let Err(e) = ciborium::into_writer(&self.0, &mut buf) {
-			return Into::<AppError>::into(anyhow!(e)).into_response();
+			return AppError::from(anyhow!(e)).into_response();
 		}
 
 		Response::builder()
@@ -94,7 +152,7 @@ where
 		async move {
 			match Path::from_request_parts(parts, state).await {
 				Ok(Path(x)) => Ok(MyPath(x)),
-				Err(e) => Err(AppError::from(e)),
+				Err(e) => Err(AppError::from(anyhow!(e))),
 			}
 		}
 	}
@@ -114,7 +172,7 @@ where
 		async move {
 			match Cbor::from_request(req, state).await {
 				Ok(Cbor(x)) => Ok(MyCbor(x)),
-				Err(e) => Err(AppError::from(e)),
+				Err(e) => Err(AppError::from(anyhow!(e))),
 			}
 		}
 	}
@@ -194,7 +252,7 @@ impl FromRequestParts<Arc<ServerState>> for Account<User> {
 		if let Some(user) = read_jwt(parts, state).await? {
 			Ok(Account(user))
 		} else {
-			Err(anyhow!("user is not logged in").into())
+			Err(AppError::from(anyhow!("user is not logged in")))
 		}
 	}
 }
