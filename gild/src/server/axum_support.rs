@@ -228,6 +228,19 @@ impl FromRequestParts<Arc<ServerState>> for Log {
 	}
 }
 
+pub async fn with_log<T>(
+	state: Arc<ServerState>, log: &mut AuditLog,
+	mut f: impl AsyncFnMut(Arc<ServerState>, &mut AuditLog) -> Result<(T, AuditLog)>,
+) -> Result<WithLog<T>>
+where
+	T: IntoResponse,
+{
+	match f(state.clone(), log).await {
+		Ok(res) => Ok(WithLog(Ok(res.0), res.1, state)),
+		Err(e) => Ok(WithLog(Err(e), log.clone(), state)),
+	}
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct WithLog<T>(
 	pub(crate) Result<T>,

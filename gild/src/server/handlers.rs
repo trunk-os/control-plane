@@ -18,6 +18,22 @@ use welds::{exts::VecStateExt, state::DbState};
 //
 // status handlers
 //
+//
+#[rustfmt::skip]
+#[macro_export]
+macro_rules! run_with_log {
+	($state:expr, $log:expr, $func:expr) => {{
+    use crate::server::axum_support::with_log;
+    let state = $state.clone();
+    let mut log = $log.clone();
+		Ok(with_log(
+			state,
+			&mut log,
+      $func,
+		)
+		.await?)
+	}};
+}
 
 pub(crate) async fn ping(
 	State(state): State<Arc<ServerState>>, Account(user): Account<Option<User>>,
@@ -309,54 +325,57 @@ pub(crate) async fn update_user(
 //
 
 pub(crate) async fn login(
-	State(state): State<Arc<ServerState>>, Log(mut log): Log, Cbor(form): Cbor<Authentication>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Cbor(form): Cbor<Authentication>,
 ) -> Result<WithLog<CborOut<Token>>> {
-	form.validate()?;
+	run_with_log!(
+		state,
+		log,
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let form = form.clone();
+			form.validate()?;
 
-	let users = User::all()
-		.where_col(|c| c.username.equal(&form.username))
-		.run(state.db.handle())
-		.await?;
+			let users = User::all()
+				.where_col(|c| c.username.equal(&form.username))
+				.run(state.db.handle())
+				.await?;
 
-	let mut map: HashMap<&str, &str> = HashMap::default();
-	map.insert("username", &form.username);
+			let mut map: HashMap<&str, &str> = HashMap::default();
+			map.insert("username", &form.username);
 
-	let user = match users.first() {
-		Some(user) => user.deref(),
-		None => {
-			let log = log
-				.with_entry("Unsuccessful login attempt")
-				.with_data(&map)?
-				.clone();
-			return Ok(state.with_log(Err(anyhow!("invalid login").into()), log));
+			let user = match users.first() {
+				Some(user) => user.deref(),
+				None => {
+					log.with_entry("Unsuccessful login attempt")
+						.with_data(&map)?;
+					return Err(anyhow!("invalid login").into());
+				}
+			};
+
+			let log = log.from_user(user);
+
+			if user.login(form.password).is_err() {
+				log.with_entry("Unsuccessful login attempt")
+					.with_data(&map)?;
+
+				return Err(anyhow!("invalid login").into());
+			}
+
+			let mut session = Session::new_assigned(user);
+			session.save(state.db.handle()).await?;
+
+			let key: Hmac<sha2::Sha384> = Hmac::new_from_slice(&state.config.signing_key)?;
+			let header = jwt::Header {
+				algorithm: jwt::AlgorithmType::Hs384,
+				..Default::default()
+			};
+			let claims = session.to_jwt();
+			let jwt = jwt::Token::new(header, claims).sign_with_key(&key)?;
+
+			let log = log.with_entry("Successfully logged in").clone();
+
+			Ok((CborOut(Token { token: jwt.into() }), log))
 		}
-	};
-
-	let log = log.from_user(user);
-
-	if user.login(form.password).is_err() {
-		let log = log
-			.with_entry("Unsuccessful login attempt")
-			.with_data(&map)?
-			.clone();
-
-		return Ok(state.with_log(Err(anyhow!("invalid login").into()), log));
-	}
-
-	let mut session = Session::new_assigned(user);
-	session.save(state.db.handle()).await?;
-
-	let key: Hmac<sha2::Sha384> = Hmac::new_from_slice(&state.config.signing_key)?;
-	let header = jwt::Header {
-		algorithm: jwt::AlgorithmType::Hs384,
-		..Default::default()
-	};
-	let claims = session.to_jwt();
-	let jwt = jwt::Token::new(header, claims).sign_with_key(&key)?;
-
-	let log = log.with_entry("Successfully logged in").clone();
-
-	Ok(state.with_log(Ok(CborOut(Token { token: jwt.into() })), log))
+	)
 }
 
 pub(crate) async fn me(
