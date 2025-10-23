@@ -344,7 +344,7 @@ where
 	fn into_response(self) -> Response {
 		let mut log = self.1;
 		if let Err(ref e) = self.0 {
-			log = log.with_error(&e.0.to_string()).clone();
+			log.with_error(&e.0);
 		}
 
 		let db = self.2.db.clone();

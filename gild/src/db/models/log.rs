@@ -1,5 +1,6 @@
 use anyhow::{Result, anyhow};
 use http::Uri;
+use problem_details::ProblemDetails;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 use welds::{WeldsModel, state::DbState};
@@ -47,8 +48,8 @@ impl AuditLog {
 		self
 	}
 
-	pub fn with_error(&mut self, error: &str) -> &mut Self {
-		self.error = Some(error.to_string());
+	pub fn with_error(&mut self, error: &ProblemDetails) -> &mut Self {
+		self.error = Some(serde_json::to_string(error).unwrap());
 		self
 	}
 
