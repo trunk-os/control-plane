@@ -5,14 +5,12 @@ pub mod messages;
 mod tests;
 
 use self::handlers::*;
-use crate::db::DB;
-use crate::{config::Config, db::models::AuditLog};
+use crate::{config::Config, db::DB};
 use anyhow::Result;
 use axum::{
 	Router,
 	routing::{delete, get, post, put},
 };
-use axum_support::WithLog;
 use buckle::client::Client as BuckleClient;
 use charon::Client as CharonClient;
 use http::{Method, header::*};
@@ -28,12 +26,6 @@ pub struct ServerState {
 	charon: CharonClient,
 	db: DB,
 	config: Config,
-}
-
-impl ServerState {
-	pub(crate) fn with_log<T>(&self, resp: axum_support::Result<T>, log: AuditLog) -> WithLog<T> {
-		WithLog(resp, log, self.clone().into())
-	}
 }
 
 #[derive(Debug, Clone)]

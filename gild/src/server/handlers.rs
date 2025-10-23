@@ -115,67 +115,93 @@ pub(crate) async fn zfs_list(
 }
 
 pub(crate) async fn zfs_create_dataset(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Cbor(dataset): Cbor<buckle::client::Dataset>,
 ) -> Result<WithLog<()>> {
-	let log = log
-		.with_entry("Creating dataset")
-		.with_data(&dataset)?
-		.clone();
-	state.buckle.zfs().await?.create_dataset(dataset).await?;
-	Ok(state.with_log(Ok(()), log))
+	run_with_log!(
+		state,
+		log,
+		(dataset),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let dataset = dataset.lock().await.clone();
+			log.with_entry("Creating dataset").with_data(&dataset)?;
+			state.buckle.zfs().await?.create_dataset(dataset).await?;
+			Ok(())
+		}
+	)
 }
 
 pub(crate) async fn zfs_modify_dataset(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Cbor(dataset): Cbor<buckle::client::ModifyDataset>,
 ) -> Result<WithLog<()>> {
-	let log = log
-		.with_entry("Modifying dataset")
-		.with_data(&dataset)?
-		.clone();
-	state.buckle.zfs().await?.modify_dataset(dataset).await?;
-	Ok(state.with_log(Ok(()), log))
+	run_with_log!(
+		state,
+		log,
+		(dataset),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let dataset = dataset.lock().await.clone();
+			log.with_entry("Modifying dataset").with_data(&dataset)?;
+			state.buckle.zfs().await?.modify_dataset(dataset).await?;
+			Ok(())
+		}
+	)
 }
 
 pub(crate) async fn zfs_create_volume(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Cbor(volume): Cbor<buckle::client::Volume>,
 ) -> Result<WithLog<()>> {
-	let log = log
-		.with_entry("Creating volume")
-		.with_data(&volume)?
-		.clone();
-	state.buckle.zfs().await?.create_volume(volume).await?;
-	Ok(state.with_log(Ok(()), log))
+	run_with_log!(
+		state,
+		log,
+		(volume),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let volume = volume.lock().await.clone();
+			log.with_entry("Creating volume").with_data(&volume)?;
+			state.buckle.zfs().await?.create_volume(volume).await?;
+			Ok(())
+		}
+	)
 }
 
 pub(crate) async fn zfs_modify_volume(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Cbor(volume): Cbor<buckle::client::ModifyVolume>,
 ) -> Result<WithLog<()>> {
-	let log = log
-		.with_entry("Modifying volume")
-		.with_data(&volume)?
-		.clone();
-	state.buckle.zfs().await?.modify_volume(volume).await?;
-	Ok(state.with_log(Ok(()), log))
+	run_with_log!(
+		state,
+		log,
+		(volume),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let volume = volume.lock().await.clone();
+			log.with_entry("Modifying volume").with_data(&volume)?;
+			state.buckle.zfs().await?.modify_volume(volume).await?;
+			Ok(())
+		}
+	)
 }
 
 pub(crate) async fn zfs_destroy(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Cbor(name): Cbor<String>,
 ) -> Result<WithLog<()>> {
-	let mut map: HashMap<&str, &str> = HashMap::default();
-	map.insert("name", &name);
+	run_with_log!(
+		state,
+		log,
+		(name),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let name = name.lock().await.clone();
+			let mut map: HashMap<&str, &str> = HashMap::default();
+			map.insert("name", &name);
 
-	let log = log
-		.with_entry("Destroy volume or dataset")
-		.with_data(&map)?
-		.clone();
+			log.with_entry("Destroy volume or dataset")
+				.with_data(&map)?;
 
-	state.buckle.zfs().await?.destroy(name).await?;
-	Ok(state.with_log(Ok(()), log))
+			state.buckle.zfs().await?.destroy(name).await?;
+			Ok(())
+		}
+	)
 }
 
 //
@@ -219,37 +245,45 @@ pub(crate) async fn create_user(
 }
 
 pub(crate) async fn reactivate_user(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Path(id): Path<u32>,
 ) -> Result<WithLog<()>> {
-	if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
-		user.deleted_at = None;
-		let log = log
-			.with_entry("Re-activating user")
-			.with_data(user.clone())?
-			.clone();
-		user.save(state.db.handle()).await?;
-		Ok(state.with_log(Ok(()), log))
-	} else {
-		Err(anyhow!("invalid user").into())
-	}
+	run_with_log!(
+		state,
+		log,
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
+				user.deleted_at = None;
+				log.with_entry("Re-activating user")
+					.with_data(user.clone())?;
+				user.save(state.db.handle()).await?;
+				Ok(())
+			} else {
+				Err(anyhow!("invalid user").into())
+			}
+		}
+	)
 }
 
 pub(crate) async fn remove_user(
-	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(mut log): Log,
+	State(state): State<Arc<ServerState>>, Account(_): Account<User>, Log(log): Log,
 	Path(id): Path<u32>,
 ) -> Result<WithLog<()>> {
-	if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
-		user.deleted_at = Some(chrono::Local::now());
-		let log = log
-			.with_entry("Deactivating user")
-			.with_data(user.clone())?
-			.clone();
-		user.save(state.db.handle()).await?;
-		Ok(state.with_log(Ok(()), log))
-	} else {
-		Err(anyhow!("invalid user").into())
-	}
+	run_with_log!(
+		state,
+		log,
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			if let Some(user) = &mut User::find_by_id(state.db.handle(), id).await? {
+				user.deleted_at = Some(chrono::Local::now());
+				log.with_entry("Deactivating user")
+					.with_data(user.clone())?;
+				user.save(state.db.handle()).await?;
+				Ok(())
+			} else {
+				Err(anyhow!("invalid user").into())
+			}
+		}
+	)
 }
 
 pub(crate) async fn list_users(
@@ -288,56 +322,65 @@ pub(crate) async fn get_user(
 
 pub(crate) async fn update_user(
 	State(state): State<Arc<ServerState>>, Path(id): Path<u32>, Account(_): Account<User>,
-	Log(mut log): Log, Cbor(mut user): Cbor<User>,
+	Log(log): Log, Cbor(user): Cbor<User>,
 ) -> Result<WithLog<()>> {
-	if let Some(orig) = User::find_by_id(state.db.handle(), id).await? {
-		// if we got the record, the id is correct
-		user.id = id;
-		if user.username.is_empty() {
-			user.username = orig.username.clone();
+	run_with_log!(
+		state,
+		log,
+		(user),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let mut user = user.lock().await.clone();
+
+			if let Some(orig) = User::find_by_id(state.db.handle(), id).await? {
+				// if we got the record, the id is correct
+				user.id = id;
+				if user.username.is_empty() {
+					user.username = orig.username.clone();
+				}
+
+				// crypt the plaintext password if it is set
+				if let Some(password) = &user.plaintext_password {
+					user.set_password(password.clone())?;
+				} else {
+					user.password = orig.password.clone()
+				}
+
+				user.plaintext_password = None; // NOTE: so it doesn't appear in the logging that follows
+
+				// NOTE: the unfortunate situation here is that you can't just "clear" a field right now. I'll
+				// have to get to that later. Setting any of these fields to null will just get the original
+				// merged in. Use reactivate_user and remove_user for toggling deleted_at status anyway.
+
+				if user.deleted_at.is_none() {
+					user.deleted_at = orig.deleted_at
+				}
+
+				if user.realname.is_none() {
+					user.realname = orig.realname.clone()
+				}
+
+				if user.phone.is_none() {
+					user.phone = orig.phone.clone()
+				}
+
+				if user.email.is_none() {
+					user.email = orig.email.clone()
+				}
+
+				log.with_entry("Modifying user").with_data(&user)?;
+
+				user.validate()?;
+
+				// welds doesn't realize the fields have already changed, these two lines force it to see
+				// it.
+				let mut dbstate: DbState<User> = DbState::db_loaded(user.clone());
+				dbstate.replace_inner(user);
+				Ok(dbstate.save(state.db.handle()).await?)
+			} else {
+				Err(anyhow!("invalid user").into())
+			}
 		}
-
-		// crypt the plaintext password if it is set
-		if let Some(password) = &user.plaintext_password {
-			user.set_password(password.clone())?;
-		} else {
-			user.password = orig.password.clone()
-		}
-
-		user.plaintext_password = None; // NOTE: so it doesn't appear in the logging that follows
-
-		// NOTE: the unfortunate situation here is that you can't just "clear" a field right now. I'll
-		// have to get to that later. Setting any of these fields to null will just get the original
-		// merged in. Use reactivate_user and remove_user for toggling deleted_at status anyway.
-
-		if user.deleted_at.is_none() {
-			user.deleted_at = orig.deleted_at
-		}
-
-		if user.realname.is_none() {
-			user.realname = orig.realname.clone()
-		}
-
-		if user.phone.is_none() {
-			user.phone = orig.phone.clone()
-		}
-
-		if user.email.is_none() {
-			user.email = orig.email.clone()
-		}
-
-		let log = log.with_entry("Modifying user").with_data(&user)?.clone();
-
-		user.validate()?;
-
-		// welds doesn't realize the fields have already changed, these two lines force it to see
-		// it.
-		let mut dbstate: DbState<User> = DbState::db_loaded(user.clone());
-		dbstate.replace_inner(user);
-		Ok(state.with_log(Ok(dbstate.save(state.db.handle()).await?), log))
-	} else {
-		Err(anyhow!("invalid user").into())
-	}
+	)
 }
 
 //
@@ -416,16 +459,23 @@ pub(crate) async fn list_units(
 }
 
 pub(crate) async fn set_unit(
-	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(settings): Cbor<buckle::systemd::UnitSettings>,
 ) -> Result<WithLog<CborOut<()>>> {
-	let log = log
-		.from_user(&user)
-		.with_entry("Update systemd unit")
-		.with_data(&settings)?
-		.clone();
-	state.buckle.systemd().await?.set_unit(settings).await?;
-	Ok(state.with_log(Ok(CborOut(())), log))
+	run_with_log!(
+		state,
+		log,
+		(user, settings),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let user = user.lock().await.clone();
+			let settings = settings.lock().await.clone();
+			log.from_user(&user)
+				.with_entry("Update systemd unit")
+				.with_data(&settings)?;
+			state.buckle.systemd().await?.set_unit(settings).await?;
+			Ok(CborOut(()))
+		}
+	)
 }
 
 pub(crate) async fn unit_log(
@@ -471,21 +521,27 @@ pub(crate) async fn get_prompts(
 }
 
 pub(crate) async fn set_responses(
-	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(responses): Cbor<PromptResponsesWithName>,
 ) -> Result<WithLog<CborOut<()>>> {
-	let log = log
-		.from_user(&user)
-		.with_entry("Set package responses")
-		.with_data(&responses)?
-		.clone();
-	state
-		.charon
-		.query()
-		.await?
-		.set_responses(&responses.name, responses.responses)
-		.await?;
-	Ok(state.with_log(Ok(CborOut(())), log))
+	run_with_log!(
+		state,
+		log,
+		(responses),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			let responses = responses.lock().await.clone();
+			log.from_user(&user)
+				.with_entry("Set package responses")
+				.with_data(&responses)?;
+			state
+				.charon
+				.query()
+				.await?
+				.set_responses(&responses.name, responses.responses)
+				.await?;
+			Ok(CborOut(()))
+		}
+	)
 }
 
 pub(crate) async fn get_responses(
@@ -531,38 +587,46 @@ pub(crate) async fn installed(
 }
 
 pub(crate) async fn install_package(
-	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(pkg): Cbor<charon::PackageTitle>,
 ) -> Result<WithLog<CborOut<()>>> {
-	let log = log
-		.from_user(&user)
-		.with_entry("Install package")
-		.with_data(&pkg)?
-		.clone();
-	state
-		.charon
-		.control()
-		.await?
-		.install(&pkg.name, &pkg.version)
-		.await?;
+	run_with_log!(
+		state,
+		log,
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			log.from_user(&user)
+				.with_entry("Install package")
+				.with_data(&pkg)?;
 
-	Ok(state.with_log(Ok(CborOut(())), log))
+			state
+				.charon
+				.control()
+				.await?
+				.install(&pkg.name, &pkg.version)
+				.await?;
+			Ok(CborOut(()))
+		}
+	)
 }
 
 pub(crate) async fn uninstall_package(
-	State(state): State<Arc<ServerState>>, Log(mut log): Log, Account(user): Account<User>,
+	State(state): State<Arc<ServerState>>, Log(log): Log, Account(user): Account<User>,
 	Cbor(pkg): Cbor<UninstallData>,
 ) -> Result<WithLog<CborOut<()>>> {
-	let log = log
-		.from_user(&user)
-		.with_entry("Uninstall package")
-		.with_data(&pkg)?
-		.clone();
-	state
-		.charon
-		.control()
-		.await?
-		.uninstall(&pkg.name, &pkg.version, pkg.purge)
-		.await?;
-	Ok(state.with_log(Ok(CborOut(())), log))
+	run_with_log!(
+		state,
+		log,
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			log.from_user(&user)
+				.with_entry("Uninstall package")
+				.with_data(&pkg)?;
+			state
+				.charon
+				.control()
+				.await?
+				.uninstall(&pkg.name, &pkg.version, pkg.purge)
+				.await?;
+			Ok(CborOut(()))
+		}
+	)
 }
