@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use std::{collections::HashMap, io::Write, path::PathBuf};
 
 use crate::migration::MigrationError;
@@ -12,12 +12,14 @@ pub async fn command(cmd: &str, args: Vec<&str>) -> Result<(String, String), Mig
 		.args(&args)
 		.output()
 		.await
-		.map_err(|e| anyhow!(e.to_string()))?;
+		.map_err(|e| MigrationError::CommandLaunch(cmd.into(), e.to_string()))?;
 
 	if output.status.success() {
 		Ok((
-			String::from_utf8(output.stdout).map_err(|e| anyhow!(e.to_string()))?,
-			String::from_utf8(output.stderr).map_err(|e| anyhow!(e.to_string()))?,
+			String::from_utf8(output.stdout)
+				.map_err(|e| MigrationError::UnknownWithMessage(e.to_string()))?,
+			String::from_utf8(output.stderr)
+				.map_err(|e| MigrationError::UnknownWithMessage(e.to_string()))?,
 		))
 	} else {
 		Err(MigrationError::Command(

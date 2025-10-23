@@ -30,6 +30,8 @@ pub enum MigrationError {
 	Command(String, String, i32),
 	#[error("Error: [filename: {0}]: {1}")]
 	WriteFile(PathBuf, String),
+	#[error("Error launching command: [command: {0}]: {1}")]
+	CommandLaunch(PathBuf, String),
 }
 
 impl From<anyhow::Error> for MigrationError {
