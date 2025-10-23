@@ -23,6 +23,23 @@ macro_rules! run_with_log {
 		use crate::server::axum_support::with_log;
 		let state = $state.clone();
 		let mut log = $log.clone();
+
+		Ok(with_log(state, &mut log, $func).await?)
+	}};
+
+  // all vars named in $name list will be wrapped in Arc<Mutex<T>> in $func, making it easier to
+  // import vars that are protected by &mut rules or aren't Clone
+	($state:expr, $log:expr, ($($name:ident),*), $func:expr) => {{
+		use crate::server::axum_support::with_log;
+    use std::sync::Arc;
+    use tokio::sync::Mutex;
+
+		let state = $state.clone();
+		let mut log = $log.clone();
+    $(
+    #[allow(unused_mut)]
+    let mut $name = Arc::new(Mutex::new($name.clone()));
+    )*
 		Ok(with_log(state, &mut log, $func).await?)
 	}};
 }
@@ -166,32 +183,39 @@ pub(crate) async fn zfs_destroy(
 //
 
 pub(crate) async fn create_user(
-	State(state): State<Arc<ServerState>>, Account(login): Account<Option<User>>,
-	Log(mut log): Log, Cbor(user): Cbor<User>,
+	State(state): State<Arc<ServerState>>, Account(login): Account<Option<User>>, Log(log): Log,
+	Cbor(user): Cbor<User>,
 ) -> Result<WithLog<CborOut<User>>> {
-	if login.is_none() && !User::first_time_setup(&state.db).await? {
-		return Err(anyhow!("invalid login").into());
-	}
+	run_with_log!(
+		state,
+		log,
+		(login, user),
+		async move |state: Arc<ServerState>, log: &mut AuditLog| {
+			if login.lock().await.is_none() && !User::first_time_setup(&state.db).await? {
+				return Err(anyhow!("invalid login").into());
+			}
 
-	let mut user = DbState::new_uncreated(user);
+			let mut user = DbState::new_uncreated(user.lock().await.clone());
 
-	user.validate()?;
+			user.validate()?;
 
-	// crypt the plaintext password if it is set, otherwise return error (passwords are required at
-	// this step)
-	if let Some(password) = user.plaintext_password.clone() {
-		user.set_password(password)?;
-	} else {
-		return Err(anyhow!("password is required").into());
-	}
+			// crypt the plaintext password if it is set, otherwise return error (passwords are required at
+			// this step)
+			if let Some(password) = user.plaintext_password.clone() {
+				user.set_password(password)?;
+			} else {
+				return Err(anyhow!("password is required").into());
+			}
 
-	user.plaintext_password = None;
+			user.plaintext_password = None;
 
-	user.save(state.db.handle()).await?;
+			user.save(state.db.handle()).await?;
 
-	let inner = user.into_inner();
-	let log = log.with_entry("Creating user").with_data(&inner)?.clone();
-	Ok(state.with_log(Ok(CborOut(inner)), log))
+			let inner = user.into_inner();
+			log.with_entry("Creating user").with_data(&inner)?;
+			Ok(CborOut(inner))
+		}
+	)
 }
 
 pub(crate) async fn reactivate_user(
@@ -367,9 +391,9 @@ pub(crate) async fn login(
 			let claims = session.to_jwt();
 			let jwt = jwt::Token::new(header, claims).sign_with_key(&key)?;
 
-			let log = log.with_entry("Successfully logged in").clone();
+			log.with_entry("Successfully logged in");
 
-			Ok((CborOut(Token { token: jwt.into() }), log))
+			Ok(CborOut(Token { token: jwt.into() }))
 		}
 	)
 }

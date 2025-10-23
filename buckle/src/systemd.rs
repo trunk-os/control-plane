@@ -139,10 +139,10 @@ impl std::str::FromStr for RuntimeState {
 
 	fn from_str(s: &str) -> Result<Self> {
 		Ok(match s {
-			"started" | "running" | "mounted" | "listening" | "plugged" | "active"
+			"start" | "started" | "running" | "mounted" | "listening" | "plugged" | "active"
 			| "activating" => Self::Started,
-			"stopped" | "inactive" | "dead" | "failed" | "exited" | "waiting" | "deactivating"
-			| "maintenance" => Self::Stopped,
+			"stop" | "stopped" | "inactive" | "dead" | "failed" | "exited" | "waiting"
+			| "deactivating" | "maintenance" => Self::Stopped,
 			"restarted" => Self::Restarted,
 			"reloaded" => Self::Reloaded,
 			s => return Err(anyhow!("invalid runtime state '{}'", s)),
