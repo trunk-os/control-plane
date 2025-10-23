@@ -15,25 +15,21 @@ use tokio_stream::StreamExt;
 use validator::Validate;
 use welds::{exts::VecStateExt, state::DbState};
 
-//
-// status handlers
-//
-//
-#[rustfmt::skip]
+// this macro is used in handlers that return WithLog<T>; it will trap audit log information with
+// the result of the inner handler. Look at other calls for examples.
 #[macro_export]
 macro_rules! run_with_log {
 	($state:expr, $log:expr, $func:expr) => {{
-    use crate::server::axum_support::with_log;
-    let state = $state.clone();
-    let mut log = $log.clone();
-		Ok(with_log(
-			state,
-			&mut log,
-      $func,
-		)
-		.await?)
+		use crate::server::axum_support::with_log;
+		let state = $state.clone();
+		let mut log = $log.clone();
+		Ok(with_log(state, &mut log, $func).await?)
 	}};
 }
+
+//
+// status handlers
+//
 
 pub(crate) async fn ping(
 	State(state): State<Arc<ServerState>>, Account(user): Account<Option<User>>,
