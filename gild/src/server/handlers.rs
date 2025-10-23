@@ -414,7 +414,7 @@ pub(crate) async fn login(
 				}
 			};
 
-			let log = log.from_user(user);
+			log.from_user(user);
 
 			if user.login(form.password).is_err() {
 				log.with_entry("Unsuccessful login attempt")

@@ -29,7 +29,12 @@ fn inner_validation_error(value: &Vec<ValidationError>) -> String {
 
 		msg.push(format!(
 			"type: {}, constraints: [{}]",
-			item.code,
+			// NOTE: hack to correct output for password field; see db::User for more info
+			if item.code == "plaintext_password" {
+				"password".to_string()
+			} else {
+				item.code.to_string()
+			},
 			inner_msg.join(", ")
 		))
 	}
