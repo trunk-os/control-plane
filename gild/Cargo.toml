@@ -38,3 +38,4 @@ tokio-stream = "*"
 reqwest = { version = "*", features = [ "default", "cookies" ] }
 reqwest_cookie_store = "*"
 tempfile = "*"
+thiserror = "*"

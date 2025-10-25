@@ -15,10 +15,24 @@ use buckle::client::Client as BuckleClient;
 use charon::Client as CharonClient;
 use http::{Method, header::*};
 use std::sync::Arc;
+use thiserror::Error;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnRequest};
 use tracing::Level;
+
+#[derive(Debug, Clone, Default, Error)]
+pub enum HandlerError {
+	#[default]
+	#[error("Unknown")]
+	Unknown,
+	#[error("Unknown: {0}")]
+	UnknownWithMessage(String),
+	#[error("Login Error: {0}")]
+	LoginError(String),
+	#[error("User Management Error: {0}")]
+	UserManagementError(String),
+}
 
 #[derive(Debug, Clone)]
 pub struct ServerState {

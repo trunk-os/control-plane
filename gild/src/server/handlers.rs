@@ -3,8 +3,10 @@ use super::{
 	axum_support::{MyCbor as Cbor, MyPath as Path, *},
 	messages::*,
 };
-use crate::db::models::{AuditLog, Session, User};
-use anyhow::anyhow;
+use crate::{
+	db::models::{AuditLog, Session, User},
+	server::HandlerError,
+};
 use axum::extract::State;
 use buckle::client::ZFSStat;
 use charon::{InstallStatus, PackageStatus, PackageTitle, UninstallData};
@@ -218,7 +220,7 @@ pub(crate) async fn create_user(
 		(login, user),
 		async move |state: Arc<ServerState>, log: &mut AuditLog| {
 			if login.lock().await.is_none() && !User::first_time_setup(&state.db).await? {
-				return Err(anyhow!("invalid login").into());
+				return Err(HandlerError::UserManagementError("First-time setup has already completed. Please login before creating a user account.".into()).into());
 			}
 
 			let mut user = DbState::new_uncreated(user.lock().await.clone());
@@ -230,7 +232,9 @@ pub(crate) async fn create_user(
 			if let Some(password) = user.plaintext_password.clone() {
 				user.set_password(password)?;
 			} else {
-				return Err(anyhow!("password is required").into());
+				return Err(
+					HandlerError::UserManagementError("password is required".into()).into(),
+				);
 			}
 
 			user.plaintext_password = None;
@@ -259,7 +263,7 @@ pub(crate) async fn reactivate_user(
 				user.save(state.db.handle()).await?;
 				Ok(())
 			} else {
-				Err(anyhow!("invalid user").into())
+				Err(HandlerError::UserManagementError("invalid user".into()).into())
 			}
 		}
 	)
@@ -280,7 +284,7 @@ pub(crate) async fn remove_user(
 				user.save(state.db.handle()).await?;
 				Ok(())
 			} else {
-				Err(anyhow!("invalid user").into())
+				Err(HandlerError::UserManagementError("invalid user".into()).into())
 			}
 		}
 	)
@@ -315,7 +319,7 @@ pub(crate) async fn get_user(
 	Ok(CborOut(
 		User::find_by_id(state.db.handle(), id)
 			.await?
-			.ok_or(anyhow!("invalid user"))?
+			.ok_or(HandlerError::UserManagementError("invalid user".into()))?
 			.into_inner(),
 	))
 }
@@ -377,7 +381,7 @@ pub(crate) async fn update_user(
 				dbstate.replace_inner(user);
 				Ok(dbstate.save(state.db.handle()).await?)
 			} else {
-				Err(anyhow!("invalid user").into())
+				Err(HandlerError::UserManagementError("invalid user".into()).into())
 			}
 		}
 	)
@@ -410,7 +414,7 @@ pub(crate) async fn login(
 				None => {
 					log.with_entry("Unsuccessful login attempt")
 						.with_data(&map)?;
-					return Err(anyhow!("invalid login").into());
+					return Err(HandlerError::LoginError("invalid login".into()).into());
 				}
 			};
 
@@ -420,7 +424,7 @@ pub(crate) async fn login(
 				log.with_entry("Unsuccessful login attempt")
 					.with_data(&map)?;
 
-				return Err(anyhow!("invalid login").into());
+				return Err(HandlerError::LoginError("invalid login".into()).into());
 			}
 
 			let mut session = Session::new_assigned(user);

@@ -1,5 +1,8 @@
 use super::ServerState;
-use crate::db::models::{AuditLog, JWTClaims, Session, User};
+use crate::{
+	db::models::{AuditLog, JWTClaims, Session, User},
+	server::HandlerError,
+};
 use anyhow::anyhow;
 use axum::{
 	extract::{FromRequest, FromRequestParts, Path},
@@ -110,12 +113,23 @@ where
 	fn from(value: E) -> Self {
 		let value: anyhow::Error = value.into();
 
+		// these blocks are here to catch types that match the Into<anyhow::Error> and shouldn't be
+		// converted to an "Unknown Error"
+
 		if value.is::<tonic::Status>() {
 			let value = value.downcast_ref::<tonic::Status>().unwrap();
 			return Self(
 				ProblemDetails::new()
 					.with_detail(value.message())
 					.with_title("API sub-services error"),
+			);
+		}
+
+		if value.is::<HandlerError>() {
+			return Self(
+				ProblemDetails::new()
+					.with_title("API Error")
+					.with_detail(value.to_string()),
 			);
 		}
 
