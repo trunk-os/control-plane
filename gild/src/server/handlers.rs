@@ -413,11 +413,11 @@ pub(crate) async fn login(
 		log,
 		async move |state: Arc<ServerState>, log: &mut AuditLog| {
 			let form = form.clone();
+			log.with_entry("Unsuccessful login attempt");
 
 			match form.validate() {
 				Ok(_) => {}
 				Err(e) => {
-					log.with_entry("Unsuccessful login attempt");
 					return Err(e.into());
 				}
 			}
@@ -429,22 +429,18 @@ pub(crate) async fn login(
 
 			let mut map: HashMap<&str, &str> = HashMap::default();
 			map.insert("username", &form.username);
+			log.with_data(&map)?;
 
 			let user = match users.first() {
 				Some(user) => user.deref(),
 				None => {
-					log.with_entry("Unsuccessful login attempt")
-						.with_data(&map)?;
-					return Err(HandlerError::LoginError("invalid login".into()).into());
+					return Err(HandlerError::LoginError("Invalid Login".into()).into());
 				}
 			};
 
 			log.from_user(user);
 
 			if user.login(form.password).is_err() {
-				log.with_entry("Unsuccessful login attempt")
-					.with_data(&map)?;
-
 				return Err(HandlerError::LoginError("invalid login".into()).into());
 			}
 
