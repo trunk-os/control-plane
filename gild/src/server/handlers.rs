@@ -418,7 +418,7 @@ pub(crate) async fn login(
 				Ok(_) => {}
 				Err(e) => {
 					log.with_entry("Unsuccessful login attempt");
-					return Err(HandlerError::LoginError(e.to_string()).into());
+					return Err(e.into());
 				}
 			}
 
