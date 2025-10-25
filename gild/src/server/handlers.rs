@@ -413,11 +413,12 @@ pub(crate) async fn login(
 		log,
 		async move |state: Arc<ServerState>, log: &mut AuditLog| {
 			let form = form.clone();
-			log.with_entry("Unsuccessful login attempt");
+			log.with_entry("Login: Unsuccessful");
 
 			match form.validate() {
 				Ok(_) => {}
 				Err(e) => {
+					log.with_entry("Login: Validation");
 					return Err(e.into());
 				}
 			}
@@ -434,6 +435,7 @@ pub(crate) async fn login(
 			let user = match users.first() {
 				Some(user) => user.deref(),
 				None => {
+					log.with_entry("Login: Invalid Username");
 					return Err(HandlerError::LoginError("Invalid Login".into()).into());
 				}
 			};
@@ -441,7 +443,8 @@ pub(crate) async fn login(
 			log.from_user(user);
 
 			if user.login(form.password).is_err() {
-				return Err(HandlerError::LoginError("invalid login".into()).into());
+				log.with_entry("Login: Invalid Username");
+				return Err(HandlerError::LoginError("Invalid Login".into()).into());
 			}
 
 			let mut session = Session::new_assigned(user);
@@ -455,8 +458,7 @@ pub(crate) async fn login(
 			let claims = session.to_jwt();
 			let jwt = jwt::Token::new(header, claims).sign_with_key(&key)?;
 
-			log.with_entry("Successfully logged in");
-
+			log.with_entry("Login: Success");
 			Ok(CborOut(Token { token: jwt.into() }))
 		}
 	)
