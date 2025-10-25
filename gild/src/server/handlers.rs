@@ -399,7 +399,14 @@ pub(crate) async fn login(
 		log,
 		async move |state: Arc<ServerState>, log: &mut AuditLog| {
 			let form = form.clone();
-			form.validate()?;
+
+			match form.validate() {
+				Ok(_) => {}
+				Err(e) => {
+					log.with_entry("Unsuccessful login attempt");
+					return Err(HandlerError::LoginError(e.to_string()).into());
+				}
+			}
 
 			let users = User::all()
 				.where_col(|c| c.username.equal(&form.username))
