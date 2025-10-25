@@ -19,58 +19,55 @@ use validator::{ValidationError, ValidationErrors, ValidationErrorsKind};
 
 pub(crate) type Result<T> = core::result::Result<T, AppError>;
 
-fn inner_validation_error(value: &Vec<ValidationError>) -> String {
-	let mut msg = Vec::new();
-	for item in value {
-		msg.push(match item.code.to_string().as_str() {
-			"length" => {
-				let mut max = "none".to_string();
-				let mut min = "0".to_string();
+fn inner_validation_error(item: &ValidationError) -> String {
+	match item.code.to_string().as_str() {
+		"length" => {
+			let mut max = "none".to_string();
+			let mut min = "0".to_string();
 
-				for (field_k, field_v) in &item.params {
-					if field_k == "max" {
-						max = field_v.to_string()
-					}
-					if field_k == "min" {
-						min = field_v.to_string()
-					}
+			for (field_k, field_v) in &item.params {
+				if field_k == "max" {
+					max = field_v.to_string()
 				}
-
-				format!(
-					"length is invalid: it must be between {} and {} characters",
-					min, max
-				)
-			}
-			"email" => "email address does not look valid".to_string(),
-			_ => {
-				let mut inner_msg = Vec::new();
-
-				for (field_k, field_v) in &item.params {
-					if field_k != "value" {
-						inner_msg.push(format!("{}: {}", field_k, field_v.to_string()));
-					}
+				if field_k == "min" {
+					min = field_v.to_string()
 				}
-
-				format!(
-					"type: {}, constraints: [{}]",
-					item.code.to_string(),
-					inner_msg.join(", ")
-				)
 			}
-		})
+
+			format!(
+				"length is invalid: it must be between {} and {} characters",
+				min, max
+			)
+		}
+		"email" => "email address does not look valid".to_string(),
+		_ => {
+			let mut inner_msg = Vec::new();
+
+			for (field_k, field_v) in &item.params {
+				if field_k != "value" {
+					inner_msg.push(format!("{}: {}", field_k, field_v.to_string()));
+				}
+			}
+
+			format!(
+				"type: {}, constraints: [{}]",
+				item.code.to_string(),
+				inner_msg.join(", ")
+			)
+		}
 	}
-
-	msg.join(", ")
 }
 
 fn field_validation_error(value: HashMap<Cow<'static, str>, &Vec<ValidationError>>) -> String {
 	let mut msg = Vec::new();
 
 	for (k, v) in value {
-		msg.push(format!("{}: [{}]", k, inner_validation_error(v)))
+		for e in v {
+			msg.push(format!("{}: {}", k, inner_validation_error(e)))
+		}
 	}
 
-	msg.join(" ")
+	msg.join(", ")
 }
 
 fn human_validation_error(value: &HashMap<Cow<'static, str>, ValidationErrorsKind>) -> String {
@@ -84,7 +81,11 @@ fn human_validation_error(value: &HashMap<Cow<'static, str>, ValidationErrorsKin
 					inner_msg.push(field_validation_error(error.field_errors()))
 				}
 			}
-			ValidationErrorsKind::Field(field) => inner_msg.push(inner_validation_error(field)),
+			ValidationErrorsKind::Field(field) => {
+				for err in field {
+					inner_msg.push(inner_validation_error(err))
+				}
+			}
 			ValidationErrorsKind::Struct(s) => {
 				inner_msg.push(field_validation_error(s.field_errors()));
 			}
