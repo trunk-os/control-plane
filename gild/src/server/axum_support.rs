@@ -91,7 +91,7 @@ fn human_validation_error(value: &HashMap<Cow<'static, str>, ValidationErrorsKin
 			}
 		}
 		msg.push(format!(
-			"{}: [{}]",
+			"{}: {}",
 			if k == "plaintext_password" {
 				"password"
 			} else {
