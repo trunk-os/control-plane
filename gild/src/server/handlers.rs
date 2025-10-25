@@ -103,13 +103,18 @@ pub(crate) async fn log(
 		.order_by_desc(|x| x.id)
 		.limit(per_page)
 		.offset(page * per_page);
-	let log = query
-		.run(state.db.handle())
-		.await?
-		.into_inners()
-		.iter_mut()
-		.for_each(|x| x.user = user_query.iter().find(|u| u.id == x.user_id))
-		.collect::<Vec<AuditLog>>();
+	let mut log = Vec::new();
+
+	for mut entry in query.run(state.db.handle()).await?.into_inners() {
+		if let Some(user_id) = entry.user_id {
+			entry.user = user_query
+				.iter()
+				.find(|u| user_id == u.id)
+				.map(|x| (*x).clone())
+		}
+
+		log.push(entry)
+	}
 
 	Ok(CborOut(log))
 }
