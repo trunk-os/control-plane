@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 use welds::{WeldsModel, state::DbState};
 
+use crate::db::models::User;
+
 #[derive(
 	Debug,
 	Clone,
@@ -29,6 +31,9 @@ pub struct AuditLog {
 	pub endpoint: String,
 	pub data: String,
 	pub error: Option<String>,
+
+	#[welds(ignore)]
+	pub user: Option<User>,
 }
 
 // FIXME: I hate this lint but I guess it should be fixed eventually
@@ -45,6 +50,7 @@ impl AuditLog {
 
 	pub fn from_user(&mut self, user: &super::User) -> &mut Self {
 		self.user_id = Some(user.id);
+		self.user = Some(user.clone());
 		self
 	}
 

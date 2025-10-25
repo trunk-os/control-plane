@@ -97,12 +97,21 @@ pub(crate) async fn log(
 ) -> Result<CborOut<Vec<AuditLog>>> {
 	let per_page: i64 = pagination.per_page.unwrap_or(20).into();
 	let page: i64 = pagination.page.unwrap_or(0).into();
+	let user_query = User::all().run(state.db.handle()).await?;
+
 	let query = AuditLog::all()
 		.order_by_desc(|x| x.id)
 		.limit(per_page)
 		.offset(page * per_page);
+	let log = query
+		.run(state.db.handle())
+		.await?
+		.into_inners()
+		.iter_mut()
+		.for_each(|x| x.user = user_query.iter().find(|u| u.id == x.user_id))
+		.collect::<Vec<AuditLog>>();
 
-	Ok(CborOut(query.run(state.db.handle()).await?.into_inners()))
+	Ok(CborOut(log))
 }
 
 //
