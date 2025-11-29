@@ -31,7 +31,6 @@ pub(crate) struct Session {
 pub(crate) type JWTClaims = BTreeMap<String, String>;
 
 pub(crate) const JWT_SESSION_ID_KEY: &str = "kid";
-pub(crate) const JWT_EXPIRATION_TIME: &str = "exp";
 pub(crate) const DEFAULT_EXPIRATION: i64 = 7;
 
 impl Session {
@@ -67,8 +66,9 @@ impl Session {
 			None => return Err(anyhow!("invalid session")),
 		};
 
-		let expires: chrono::DateTime<chrono::Local> = claims[JWT_EXPIRATION_TIME].parse()?;
-		if session.expires.signed_duration_since(expires).num_seconds() < 0 {
+		if chrono::Local::now().signed_duration_since(session.expires)
+			> chrono::Duration::days(DEFAULT_EXPIRATION)
+		{
 			return Err(anyhow!("session is expired"));
 		}
 		Ok(DbState::db_loaded(session.clone()))
@@ -77,7 +77,6 @@ impl Session {
 	pub(crate) fn to_jwt(&self) -> JWTClaims {
 		let mut claims = JWTClaims::default();
 		claims.insert(JWT_SESSION_ID_KEY.into(), self.id.to_string());
-		claims.insert(JWT_EXPIRATION_TIME.into(), self.expires.to_rfc3339());
 		claims
 	}
 }

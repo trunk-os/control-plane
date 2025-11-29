@@ -4,7 +4,7 @@ use welds::state::DbState;
 
 use super::User;
 use crate::{
-	db::models::{AuditLog, JWT_EXPIRATION_TIME, JWT_SESSION_ID_KEY, Session},
+	db::models::{AuditLog, JWT_SESSION_ID_KEY, Session},
 	server::messages::Authentication,
 	testutil::*,
 };
@@ -65,12 +65,6 @@ async fn session_jwt() {
 	assert_eq!(
 		claims[JWT_SESSION_ID_KEY].parse::<u32>().unwrap(),
 		session.id
-	);
-	assert_eq!(
-		claims[JWT_EXPIRATION_TIME]
-			.parse::<chrono::DateTime<chrono::Local>>()
-			.unwrap(),
-		session.expires,
 	);
 
 	let session2 = Session::from_jwt(&db, claims).await.unwrap();
