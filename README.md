@@ -11,3 +11,5 @@ The code will likely have its revision history reset at time of release; it is b
 To run tests: `make test`. It will run the tests as root. Do not use cargo directly as tests will likely not pass.
 
 You need ZFS and systemd; look at the [platform](https://github.com/trunk-os/platform) Makefiles for support on setting the services up for playing with, but if you don't want to use real disks, they must be used to create a `trunk` zpool that will be modified by tests, backed by 200GB of sparsely allocated files. Tests can, on failure, leak volumes, datasets and temporary files and directories which may need to be cleaned up by hand, but most tests and the test utility functions go to great lengths to avoid doing that.
+
+The first times the tests run, they will attempt to download an ubuntu disk image used for a few tests. This may take a while depending on your internet connectivity.
