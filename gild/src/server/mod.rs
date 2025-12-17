@@ -14,7 +14,7 @@ use axum::{
 use buckle::client::Client as BuckleClient;
 use charon::Client as CharonClient;
 use http::{Method, header::*};
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 use thiserror::Error;
 use tower::ServiceBuilder;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -127,7 +127,7 @@ impl Server {
 	}
 }
 
-async fn shutdown_signal(handle: axum_server::Handle) {
+async fn shutdown_signal(handle: axum_server::Handle<SocketAddr>) {
 	let ctrl_c = async {
 		tokio::signal::ctrl_c()
 			.await
