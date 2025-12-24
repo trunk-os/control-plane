@@ -67,7 +67,7 @@ fn prometheus() -> Migration {
 	build_container_migration!(
 		"prometheus",
 		"Prometheus Query Service",
-		"podman run -u 0 --security-opt label=disable --net host -it -v /trunk/prometheus:/prometheus:rw,rshared --name trunk-prometheus quay.io/trunk-os/prometheus"
+		"podman run -u 0 --security-opt label=disable --net host -it -v /trunk/prometheus:/prometheus:Z --name trunk-prometheus quay.io/trunk-os/prometheus"
 	)
 }
 
@@ -75,7 +75,7 @@ fn grafana() -> Migration {
 	build_container_migration!(
 		"grafana",
 		"Grafana Dashboard Service",
-		"podman run -u 0 --security-opt label=disable --net host -it --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:rw,rshared quay.io/trunk-os/grafana"
+		"podman run -u 0 --security-opt label=disable --net host -it --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:Z quay.io/trunk-os/grafana"
 	)
 }
 
