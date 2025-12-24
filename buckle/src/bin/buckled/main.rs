@@ -27,7 +27,7 @@ pub async fn main() -> Result<(), anyhow::Error> {
 	};
 
 	if let Err(e) = run_migrations(migrations(), Default::default()).await {
-		tracing::error!("error: {}", e);
+		tracing::error!("Error running migrations: {}", e);
 	}
 
 	if let Err(e) = Server::new_with_config(Some(config)).start()?.await {
