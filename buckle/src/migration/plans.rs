@@ -43,6 +43,7 @@ macro_rules! build_container_migration {
         &format!("trunk-{}", $name),
         ("Unit", (("Description" => &format!("Trunk: {}", $description)),)),
         ("Service", (
+          ("Type" => "exec"),
           ("ExecStart" => $command),
           ("ExecStartPre" => &format!("podman rm -f trunk-{}", $name)),
           ("Restart" => "always"),
