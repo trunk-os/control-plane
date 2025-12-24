@@ -261,19 +261,26 @@ pub fn generate_container_command(
 		// FIXME: create filesystems on block devices.
 		//        ignoring them for now
 		if let Some(mountpoint) = &volume.mountpoint {
-			let volmap = if !volume.private {
-				format!(
-					"{}:{}:rshared",
-					volume_root.join(&volume.name).display(),
-					mountpoint
-				)
-			} else {
-				format!(
-					"{}:{}:rprivate",
-					volume_root.join(&volume.name).display(),
-					mountpoint
-				)
-			};
+			// FIXME: ignoring volume private flag until I can figure out what's different about zfs on
+			// fedora
+			// let volmap = if !volume.private {
+			// 	format!(
+			// 		"{}:{}:rshared",
+			// 		volume_root.join(&volume.name).display(),
+			// 		mountpoint
+			// 	)
+			// } else {
+			// 	format!(
+			// 		"{}:{}:rprivate",
+			// 		volume_root.join(&volume.name).display(),
+			// 		mountpoint
+			// 	)
+			// };
+			let volmap = format!(
+				"{}:{}:rshared",
+				volume_root.join(&volume.name).display(),
+				mountpoint
+			);
 			cmd.append(&mut vec!["-v".into(), volmap]);
 		}
 	}
