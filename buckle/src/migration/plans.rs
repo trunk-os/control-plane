@@ -44,7 +44,7 @@ macro_rules! build_container_migration {
         ("Unit", (("Description" => &format!("Trunk: {}", $description)),)),
         ("Service", (
           ("ExecStart" => $command),
-          ("ExecStop" => &format!("podman rm -f trunk-{}", $name)),
+          //("ExecStop" => &format!("podman rm -f trunk-{}", $name)),
           ("Restart" => "always"),
           ("TimeoutSec" => "300"),
         )),
