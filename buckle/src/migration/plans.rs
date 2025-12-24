@@ -66,7 +66,7 @@ fn prometheus() -> Migration {
 	build_container_migration!(
 		"prometheus",
 		"Prometheus Query Service",
-		"podman run -u 0 --net host -it -v /trunk/prometheus:/prometheus:shared --name trunk-prometheus quay.io/trunk-os/prometheus"
+		"podman run -u 0 --security-opt label=disable --net host -it -v /trunk/prometheus:/prometheus:shared --name trunk-prometheus quay.io/trunk-os/prometheus"
 	)
 }
 
@@ -74,7 +74,7 @@ fn grafana() -> Migration {
 	build_container_migration!(
 		"grafana",
 		"Grafana Dashboard Service",
-		"podman run -it -u 0 --net host -it --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"
+		"podman run -it -u 0 --security-opt label=disable --net host -it --name trunk-grafana -v /trunk/grafana:/var/lib/grafana:shared,rw quay.io/trunk-os/grafana"
 	)
 }
 
@@ -82,6 +82,6 @@ fn node_exporter() -> Migration {
 	build_container_migration!(
 		"node-exporter",
 		"node-exporter Metrics Service",
-		"podman run -it --cap-add SYS_TIME --name trunk-node-exporter --net host --pid host -v /:/host:ro,rslave quay.io/trunk-os/node-exporter --path.rootfs=/host"
+		"podman run -it --security-opt label=disable --cap-add SYS_TIME --name trunk-node-exporter --net host --pid host -v /:/host:ro,rslave quay.io/trunk-os/node-exporter --path.rootfs=/host"
 	)
 }
