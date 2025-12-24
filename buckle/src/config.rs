@@ -11,11 +11,12 @@ fn default_zpool() -> String {
 	DEFAULT_ZPOOL.to_string()
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub enum LogLevel {
 	#[serde(rename = "warn")]
 	Warn,
 	#[serde(rename = "info")]
+	#[default]
 	Info,
 	#[serde(rename = "error")]
 	Error,
@@ -72,10 +73,6 @@ impl Config {
 	pub fn from_file(filename: std::path::PathBuf) -> Result<Self> {
 		let r = std::fs::OpenOptions::new().read(true).open(filename)?;
 		let this: Self = serde_yaml_ng::from_reader(r)?;
-		let subscriber = FmtSubscriber::builder()
-			.with_max_level(Into::<tracing::Level>::into(this.log_level.clone()))
-			.finish();
-		tracing::subscriber::set_global_default(subscriber)?;
 		info!("Configuration parsed successfully.");
 		Ok(this)
 	}
@@ -83,6 +80,10 @@ impl Config {
 
 impl Default for Config {
 	fn default() -> Self {
+		let subscriber = FmtSubscriber::builder()
+			.with_max_level(Into::<tracing::Level>::into(LogLevel::default()))
+			.finish();
+		tracing::subscriber::set_global_default(subscriber).expect("Instantiate Logging");
 		Self::from_file(CONFIG_PATH.into()).expect("while reading config file")
 	}
 }

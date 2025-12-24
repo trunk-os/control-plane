@@ -10,7 +10,9 @@ pub async fn main() -> Result<(), anyhow::Error> {
 		match std::env::args().nth(1).unwrap().as_str() {
 			"migrate" => {
 				print!("running migrations...");
-				run_migrations(migrations(), Default::default()).await?;
+				if let Err(e) = run_migrations(migrations(), Default::default()).await {
+					println!("error: {}", e);
+				}
 				println!("done.");
 				std::process::exit(0);
 
@@ -24,7 +26,9 @@ pub async fn main() -> Result<(), anyhow::Error> {
 		Config::default()
 	};
 
-	run_migrations(migrations(), Default::default()).await?;
+	if let Err(e) = run_migrations(migrations(), Default::default()).await {
+		tracing::error!("error: {}", e);
+	}
 
 	if let Err(e) = Server::new_with_config(Some(config)).start()?.await {
 		tracing::error!("Error while running service: {}", e.to_string());
