@@ -41,7 +41,10 @@ macro_rules! build_container_migration {
 
       let unit = systemd_unit!(
         &format!("trunk-{}", $name),
-        ("Unit", (("Description" => &format!("Trunk: {}", $description)),)),
+        ("Unit", (
+            ("Description" => &format!("Trunk: {}", $description)),
+            ("After" => "charon.service"),
+        )),
         ("Service", (
           ("Type" => "exec"),
           ("ExecStart" => $command),

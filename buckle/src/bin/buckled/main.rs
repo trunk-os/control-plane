@@ -17,7 +17,7 @@ pub async fn main() -> Result<(), anyhow::Error> {
 				std::process::exit(0);
 
 				// NOTE: this just keeps the match clean. This code still doesn't run.
-				#[allow(unreachable_code)]
+				#[expect(unreachable_code)]
 				Config::default()
 			}
 			x => Config::from_file(x.into())?,

@@ -9,7 +9,7 @@ mod prompt;
 mod server;
 mod systemd;
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) mod qmp;
 
 pub use cli::*;

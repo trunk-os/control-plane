@@ -133,11 +133,9 @@ pub fn list_zpools() -> Result<Vec<String>> {
 
 mod tests {
 	mod zfs {
-		#[allow(unused)]
-		use super::super::{BUCKLE_TEST_ZPOOL_PREFIX, create_zpool, destroy_zpool, list_zpools};
-
 		#[test]
 		fn create_remove_zpool() {
+			use crate::testutil::*;
 			let _ = destroy_zpool("testutil-test", None);
 			let (_, file) = create_zpool("testutil-test").unwrap();
 			assert!(file.len() > 0);

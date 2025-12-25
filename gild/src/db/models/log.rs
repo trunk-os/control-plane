@@ -37,7 +37,7 @@ pub struct AuditLog {
 }
 
 // FIXME: I hate this lint but I guess it should be fixed eventually
-#[allow(clippy::wrong_self_convention)]
+#[expect(clippy::wrong_self_convention)]
 impl AuditLog {
 	pub fn builder() -> Self {
 		Self::default()

@@ -21,7 +21,7 @@ const QEMU_MONITOR_FILENAME: &str = "qemu-monitor";
 
 enum DownloadInfo {
 	Data(Vec<u8>),
-	#[allow(dead_code)]
+	#[expect(dead_code)]
 	ContentType(String),
 	Close,
 }

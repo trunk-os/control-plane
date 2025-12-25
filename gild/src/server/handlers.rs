@@ -39,7 +39,7 @@ macro_rules! run_with_log {
 		let state = $state.clone();
 		let mut log = $log.clone();
     $(
-    #[allow(unused_mut)]
+    #[expect(unused_mut)]
     let mut $name = Arc::new(Mutex::new($name.clone()));
     )*
 		Ok(with_log(state, &mut log, $func).await?)

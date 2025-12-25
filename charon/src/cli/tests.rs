@@ -232,7 +232,7 @@ mod cli_generation {
 				"--name",
 				"podman-test-0.0.1",
 				"-v",
-				"/volume-root/private:/private-test:rprivate",
+				"/volume-root/private:/private-test:rshared",
 				"-v",
 				"/volume-root/shared:/shared-test:rshared",
 				"--pid",
