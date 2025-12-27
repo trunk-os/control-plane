@@ -28,14 +28,14 @@ enum DownloadInfo {
 
 pub fn generate_command(package: CompiledPackage, volume_root: PathBuf) -> Result<Vec<String>> {
 	match package.source {
-		CompiledSource::URL(_) => generate_vm_command(&package, &volume_root),
+		CompiledSource::QEmu(_) => generate_vm_command(&package, &volume_root),
 		CompiledSource::Container(_) => generate_container_command(&package, &volume_root),
 	}
 }
 
 pub fn stop_package(package: CompiledPackage, volume_root: PathBuf) -> Result<()> {
 	match package.source {
-		CompiledSource::URL(_) => vm_shutdown(&package, &volume_root),
+		CompiledSource::QEmu(_) => vm_shutdown(&package, &volume_root),
 		CompiledSource::Container(_) => container_shutdown(&package, &volume_root),
 	}
 }

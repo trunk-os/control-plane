@@ -11,9 +11,9 @@
     "volumes": [
       {
         "name": "private",
-        "mountpoint": "@private_path@",
-        "size": "@private_size@",
-        "recreate": "@private_recreate@",
+        "mountpoint": "?private_path?",
+        "size": "?private_size?",
+        "recreate": "?private_recreate?",
         "private": "true"
       }
     ]

@@ -5,7 +5,7 @@
   },
   "description": "Please modify this description",
   "source": {
-    "url": "file://./testdata/ubuntu.img"
+    "qemu": "file://./testdata/ubuntu.img"
   },
   "networking": {
     "forward_ports": [["1234", "5678"]],

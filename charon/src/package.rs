@@ -475,8 +475,8 @@ pub struct PackageStatus {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Source {
-	#[serde(rename = "url")]
-	URL(TemplatedInput<String>),
+	#[serde(rename = "qemu")]
+	QEmu(TemplatedInput<String>),
 	#[serde(rename = "container")]
 	Container(TemplatedInput<String>),
 }
@@ -494,7 +494,7 @@ impl Source {
 	) -> Result<CompiledSource> {
 		tracing::debug!("Compiling package source subsection");
 		Ok(match self {
-			Self::URL(x) => CompiledSource::URL(x.output(globals, prompts, responses)?),
+			Self::QEmu(x) => CompiledSource::QEmu(x.output(globals, prompts, responses)?),
 			Self::Container(x) => CompiledSource::Container(x.output(globals, prompts, responses)?),
 		})
 	}
@@ -502,8 +502,8 @@ impl Source {
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CompiledSource {
-	#[serde(rename = "url")]
-	URL(String),
+	#[serde(rename = "qemu")]
+	QEmu(String),
 	#[serde(rename = "container")]
 	Container(String),
 }
